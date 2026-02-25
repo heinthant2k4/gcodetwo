@@ -7,6 +7,7 @@
 import { useEffect, useCallback } from "react";
 import { useAppStore } from "@/store";
 import { SHORTCUTS } from "@/lib/keyboard/shortcuts";
+import { loadGCodeFile, saveGCodeFile, getBasename } from "@/lib/io/file-handler";
 
 export function useKeyboardShortcuts() {
     const play = useAppStore((s) => s.play);
@@ -16,6 +17,9 @@ export function useKeyboardShortcuts() {
     const stepBackward = useAppStore((s) => s.stepBackward);
     const setViewMode = useAppStore((s) => s.setViewMode);
     const editorText = useAppStore((s) => s.editorText);
+    const editorFilename = useAppStore((s) => s.editorFilename);
+    const editorExtension = useAppStore((s) => s.editorExtension);
+    const editorLineEnding = useAppStore((s) => s.editorLineEnding);
 
     const handleAction = useCallback(
         (action: string) => {
@@ -56,30 +60,29 @@ export function useKeyboardShortcuts() {
                     break;
                 }
                 case "export-gcode": {
-                    const blob = new Blob([editorText], { type: "text/plain" });
-                    const url = URL.createObjectURL(blob);
-                    const a = document.createElement("a");
-                    a.href = url;
-                    a.download = "program.gcode";
-                    a.click();
-                    URL.revokeObjectURL(url);
+                    saveGCodeFile({
+                        content: editorText,
+                        basename: editorFilename,
+                        extension: editorExtension,
+                        lineEnding: editorLineEnding,
+                    });
                     break;
                 }
                 case "open-gcode": {
                     const input = document.createElement("input");
                     input.type = "file";
-                    input.accept = ".gcode,.nc,.ngc,.tap,.txt";
-                    input.onchange = (e) => {
+                    input.accept = ".gcode,.gc,.ngc,.txt";
+                    input.onchange = async (e) => {
                         const file = (e.target as HTMLInputElement).files?.[0];
                         if (file) {
-                            const reader = new FileReader();
-                            reader.onload = (ev) => {
-                                const content = ev.target?.result as string;
-                                if (content) {
-                                    useAppStore.getState().setEditorText(content);
-                                }
-                            };
-                            reader.readAsText(file);
+                            const result = await loadGCodeFile(file);
+                            if (!result.error) {
+                                useAppStore.getState().setEditorText(result.content, {
+                                    filename: getBasename(result.filename),
+                                    extension: result.extension,
+                                    lineEnding: result.lineEnding,
+                                });
+                            }
                         }
                     };
                     input.click();
@@ -87,7 +90,18 @@ export function useKeyboardShortcuts() {
                 }
             }
         },
-        [play, pause, stop, stepForward, stepBackward, setViewMode, editorText]
+        [
+            play,
+            pause,
+            stop,
+            stepForward,
+            stepBackward,
+            setViewMode,
+            editorText,
+            editorFilename,
+            editorExtension,
+            editorLineEnding,
+        ]
     );
 
     useEffect(() => {

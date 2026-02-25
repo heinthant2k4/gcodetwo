@@ -1,112 +1,360 @@
 "use client";
 
 import Link from "next/link";
+import {
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+    type MouseEvent,
+    type ReactNode,
+} from "react";
+
+type SectionId =
+    | "overview"
+    | "supported-gcode"
+    | "simulation-model"
+    | "machine-profiles"
+    | "file-io"
+    | "limitations"
+    | "faq";
+
+type DocSection = {
+    id: SectionId;
+    title: string;
+    body: ReactNode;
+};
+
+const SECTION_ORDER: SectionId[] = [
+    "overview",
+    "supported-gcode",
+    "simulation-model",
+    "machine-profiles",
+    "file-io",
+    "limitations",
+    "faq",
+];
+
+const LEFT_NAV_GROUPS = [
+    {
+        title: "Getting Started",
+        items: [
+            { id: "overview" as SectionId, label: "Overview" },
+            { id: "supported-gcode" as SectionId, label: "Supported G-code" },
+            { id: "simulation-model" as SectionId, label: "Simulation Model" },
+        ],
+    },
+    {
+        title: "Reference",
+        items: [
+            { id: "machine-profiles" as SectionId, label: "Machine Profiles" },
+            { id: "file-io" as SectionId, label: "File Import / Export" },
+            { id: "limitations" as SectionId, label: "Limitations" },
+            { id: "faq" as SectionId, label: "FAQ" },
+        ],
+    },
+];
+
+const RIGHT_RAIL = [
+    { id: "overview" as SectionId, label: "Overview" },
+    { id: "supported-gcode" as SectionId, label: "Supported G-code" },
+    { id: "simulation-model" as SectionId, label: "Simulation Model" },
+    { id: "machine-profiles" as SectionId, label: "Machine Profiles" },
+    { id: "file-io" as SectionId, label: "File Import / Export" },
+    { id: "limitations" as SectionId, label: "Limitations" },
+    { id: "faq" as SectionId, label: "FAQ" },
+];
+
+function prefersReducedMotion(): boolean {
+    return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function CodeBlock({ code, language = "text" }: { code: string; language?: string }) {
+    const [copied, setCopied] = useState(false);
+
+    const onCopy = async () => {
+        try {
+            await navigator.clipboard.writeText(code);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1200);
+        } catch {
+            setCopied(false);
+        }
+    };
+
+    return (
+        <div className="overflow-hidden rounded-md border border-border-500 bg-bg-900">
+            <div className="flex items-center justify-between border-b border-border-500 bg-bg-800 px-3 py-2">
+                <span className="text-[11px] uppercase tracking-widest text-text-300 font-code">{language}</span>
+                <button
+                    onClick={onCopy}
+                    className="text-[11px] uppercase tracking-widest text-text-300 hover:text-text-100 font-code"
+                >
+                    {copied ? "Copied" : "Copy"}
+                </button>
+            </div>
+            <pre className="overflow-x-auto p-3 text-xs leading-relaxed text-text-100">
+                <code>{code}</code>
+            </pre>
+        </div>
+    );
+}
+
+function H2({ id, title }: { id: SectionId; title: string }) {
+    return (
+        <h2 id={id} className="scroll-mt-8 text-3xl font-ui font-semibold tracking-tight text-text-100">
+            <a href={`#${id}`} className="group inline-flex items-center gap-2 hover:text-semantic-motion">
+                {title}
+                <span className="opacity-0 group-hover:opacity-100 text-sm text-text-300">#</span>
+            </a>
+        </h2>
+    );
+}
 
 export default function DocsPage() {
+    const scrollRef = useRef<HTMLDivElement>(null);
+    const [active, setActive] = useState<SectionId>("overview");
+
+    const sections = useMemo<DocSection[]>(
+        () => [
+            {
+                id: "overview",
+                title: "Overview",
+                body: (
+                    <div className="space-y-4 text-base text-text-200 leading-8">
+                        <p>
+                            WebGCode 2 is a local-only CNC engineering tool. Parser, validation, simulation, and rendering
+                            run entirely in the browser runtime.
+                        </p>
+                        <p>
+                            The editor text is the source contract. Everything downstream is deterministic projection:
+                            diagnostics, toolpath segments, playback state, and visualization.
+                        </p>
+                    </div>
+                ),
+            },
+            {
+                id: "supported-gcode",
+                title: "Supported G-code",
+                body: (
+                    <div className="space-y-4 text-base text-text-200 leading-8">
+                        <p>Motion simulation is currently implemented for rapid, linear, and circular interpolation paths.</p>
+                        <CodeBlock
+                            language="gcode"
+                            code={`G0  X10 Y10 Z5
+G1  X50 Y10 F800
+G2  X70 Y30 I10 J0
+G3  X50 Y50 I0 J10
+G90 ; absolute mode
+G91 ; incremental mode`}
+                        />
+                        <p>
+                            Additional setup/spindle codes are parsed and validated against the machine profile, but may be
+                            non-geometric in current viewer output.
+                        </p>
+                    </div>
+                ),
+            },
+            {
+                id: "simulation-model",
+                title: "Simulation Model",
+                body: (
+                    <div className="space-y-4 text-base text-text-200 leading-8">
+                        <p>The engine is segment-based and line-mapped. Each segment keeps source line index, distance, and duration metadata.</p>
+                        <CodeBlock
+                            language="pipeline"
+                            code={`Monaco Editor
+ -> Parse (line tokenizer)
+ -> Validate (machine constraints)
+ -> Generate segments
+ -> Build simulation steps
+ -> Render in Three.js`}
+                        />
+                        <p>Playback and scrub operate over explicit indices for repeatable behavior across machines.</p>
+                    </div>
+                ),
+            },
+            {
+                id: "machine-profiles",
+                title: "Machine Profiles",
+                body: (
+                    <div className="space-y-4 text-base text-text-200 leading-8">
+                        <ul className="list-disc pl-6 space-y-1">
+                            <li>Axis bounds for X/Y/Z</li>
+                            <li>Units (`mm`/`inch`)</li>
+                            <li>Maximum feed and spindle constraints</li>
+                            <li>Supported G/M command sets</li>
+                        </ul>
+                        <p>Profile edits re-run validation and simulation immediately against the current editor buffer.</p>
+                    </div>
+                ),
+            },
+            {
+                id: "file-io",
+                title: "File Import / Export",
+                body: (
+                    <div className="space-y-4 text-base text-text-200 leading-8">
+                        <p>Supported export types: <code className="font-code text-text-100">.gcode .gc .ngc .txt</code>.</p>
+                        <ul className="list-disc pl-6 space-y-1">
+                            <li>Import via browser File API only</li>
+                            <li>Export via Blob + object URL + hidden anchor</li>
+                            <li>Original line ending style (`LF` / `CRLF`) preserved</li>
+                            <li>No comment removal and no formatting rewrite</li>
+                        </ul>
+                    </div>
+                ),
+            },
+            {
+                id: "limitations",
+                title: "Limitations",
+                body: (
+                    <div className="space-y-4 text-base text-text-200 leading-8">
+                        <ul className="list-disc pl-6 space-y-1">
+                            <li>Geometric simulation only, no material removal model</li>
+                            <li>No collision solver or fixture collision analysis</li>
+                            <li>Large file responsiveness depends on browser + GPU budget</li>
+                        </ul>
+                    </div>
+                ),
+            },
+            {
+                id: "faq",
+                title: "FAQ",
+                body: (
+                    <div className="space-y-5 text-base text-text-200 leading-8">
+                        <div>
+                            <h3 className="text-text-100 font-ui font-semibold">Is any G-code transmitted to a server?</h3>
+                            <p>No. The app is local-only at runtime.</p>
+                        </div>
+                        <div>
+                            <h3 className="text-text-100 font-ui font-semibold">Why is a command flagged unsupported?</h3>
+                            <p>The active machine profile defines allowed command lists.</p>
+                        </div>
+                    </div>
+                ),
+            },
+        ],
+        []
+    );
+
+    useEffect(() => {
+        const root = scrollRef.current;
+        if (!root) return;
+        const nodes = SECTION_ORDER.map((id) => document.getElementById(id)).filter(
+            (node): node is HTMLElement => Boolean(node)
+        );
+        if (nodes.length === 0) return;
+
+        const observer = new IntersectionObserver(
+            (entries) => {
+                const inView = entries
+                    .filter((entry) => entry.isIntersecting)
+                    .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+                if (inView[0]) {
+                    setActive(inView[0].target.id as SectionId);
+                }
+            },
+            { root, threshold: [0.2, 0.6], rootMargin: "-15% 0px -65% 0px" }
+        );
+
+        nodes.forEach((node) => observer.observe(node));
+        return () => observer.disconnect();
+    }, []);
+
+    const scrollTo = (id: SectionId) => (event: MouseEvent<HTMLAnchorElement>) => {
+        event.preventDefault();
+        const target = document.getElementById(id);
+        if (!target) return;
+        target.scrollIntoView({
+            behavior: prefersReducedMotion() ? "auto" : "smooth",
+            block: "start",
+        });
+        history.replaceState(null, "", `#${id}`);
+        setActive(id);
+    };
+
     return (
-        <div className="h-full bg-bg-900 overflow-y-auto selection:bg-semantic-motion selection:text-white">
-            <div className="text-text-200 font-ui p-8 max-w-4xl mx-auto leading-relaxed">
-                <nav className="mb-12 border-b border-border-500 pb-4">
-                    <Link href="/" className="text-semantic-motion hover:text-text-100 transition-colors text-sm uppercase tracking-widest font-code">
-                        &larr; Return to Editor
+        <div className="h-full min-h-0 bg-black text-text-100">
+            <header className="h-14 border-b border-border-500 bg-black">
+                <div className="mx-auto flex h-full max-w-[1400px] items-center justify-between px-5">
+                    <div className="flex items-center gap-4">
+                        <span className="text-xl font-ui font-semibold tracking-tight">WebGCode Docs</span>
+                        <span className="text-xs font-code text-text-300 uppercase tracking-widest">Local-Only</span>
+                    </div>
+                    <Link href="/" className="text-xs uppercase tracking-widest font-code text-semantic-motion hover:text-text-100">
+                        Return to Editor
                     </Link>
-                </nav>
+                </div>
+            </header>
 
-                <header className="mb-12">
-                    <h1 className="text-3xl font-code text-text-100 mb-2 uppercase tracking-tight">Technical Documentation</h1>
-                    <p className="text-text-300 text-sm italic">Revision 2.0.4 | WebGCode Engineering Manual</p>
-                </header>
-
-                <section className="space-y-12">
-                    <article>
-                        <h2 className="text-xl font-code text-text-100 mb-4 border-l-4 border-semantic-motion pl-4">1. Technical Overview (G-code Viewer)</h2>
-                        <ul className="list-disc list-inside space-y-2 text-sm ml-4">
-                            <li>WebGCode 2 is a professional, browser-based G-code viewer and editor designed for CNC toolpath simulation.</li>
-                            <li>It is not a SaaS, cloud service, or remote processing platform.</li>
-                            <li>All execution, parsing, and rendering occur strictly within the local browser environment (local-only).</li>
-                            <li>Zero-data transmission guarantee: no code is sent to external servers.</li>
-                        </ul>
-                    </article>
-
-                    <article>
-                        <h2 className="text-xl font-code text-text-100 mb-4 border-l-4 border-semantic-motion pl-4">2. Supported G-code Commands (CNC Toolpaths)</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 ml-4">
-                            <div>
-                                <p className="text-sm mb-4">The engine parses ISO standard G-code commands for deterministic CNC toolpath visualization.</p>
-                                <h3 className="text-xs uppercase tracking-widest text-text-300 mb-2 font-bold">Movement Commands</h3>
-                                <ul className="list-none space-y-1 text-sm">
-                                    <li><code className="bg-bg-800 px-1 rounded text-semantic-motion">G0</code> - Rapid Positioning</li>
-                                    <li><code className="bg-bg-800 px-1 rounded text-semantic-motion">G1</code> - Linear Interpolation</li>
-                                    <li><code className="bg-bg-800 px-1 rounded text-semantic-motion">G2</code> - Circular Interpolation (CW)</li>
-                                    <li><code className="bg-bg-800 px-1 rounded text-semantic-motion">G3</code> - Circular Interpolation (CCW)</li>
-                                </ul>
+            <div className="mx-auto flex h-[calc(100%-3.5rem)] min-h-0 max-w-[1400px]">
+                <aside className="hidden w-72 shrink-0 border-r border-border-500 xl:block">
+                    <div className="sticky top-0 h-full overflow-y-auto px-4 py-6">
+                        {LEFT_NAV_GROUPS.map((group) => (
+                            <div key={group.title} className="mb-6 border-b border-border-500 pb-4 last:border-0">
+                                <h3 className="mb-2 text-xs font-code uppercase tracking-widest text-text-300">{group.title}</h3>
+                                <nav className="space-y-1">
+                                    {group.items.map((item) => (
+                                        <a
+                                            key={item.id}
+                                            href={`#${item.id}`}
+                                            onClick={scrollTo(item.id)}
+                                            className={`block rounded-sm px-2 py-1.5 text-sm ${
+                                                active === item.id
+                                                    ? "bg-bg-700 text-text-100"
+                                                    : "text-text-300 hover:bg-bg-800 hover:text-text-100"
+                                            }`}
+                                        >
+                                            {item.label}
+                                        </a>
+                                    ))}
+                                </nav>
                             </div>
-                            <div>
-                                <h3 className="text-xs uppercase tracking-widest text-text-300 mb-2 font-bold">Modal & Spindle</h3>
-                                <ul className="list-none space-y-1 text-sm">
-                                    <li><code className="bg-bg-800 px-1 rounded text-text-100">G20/G21</code> - Units (Inch/mm)</li>
-                                    <li><code className="bg-bg-800 px-1 rounded text-text-100">G90/G91</code> - Positioning (Abs/Inc)</li>
-                                    <li><code className="bg-bg-800 px-1 rounded text-text-100">M3/M4/M5</code> - Spindle Control</li>
-                                </ul>
-                            </div>
-                        </div>
-                        <div className="mt-6 ml-4">
-                            <h3 className="text-xs uppercase tracking-widest text-text-300 mb-2 font-bold">Ignored Commands</h3>
-                            <p className="text-sm text-text-300 mb-2">The following are parsed but ignored in the current simulation engine:</p>
-                            <ul className="list-disc list-inside space-y-1 text-sm text-text-300">
-                                <li>Canned Cycles (G80-G89)</li>
-                                <li>Tool Length Compensation (G43)</li>
-                                <li>Work Coordinate Systems (G54-G59)</li>
-                                <li>Dwell (G4)</li>
-                            </ul>
+                        ))}
+                    </div>
+                </aside>
+
+                <main
+                    ref={scrollRef}
+                    className="min-h-0 flex-1 overflow-y-auto px-6 py-8 motion-reduce:scroll-auto"
+                    style={{ scrollBehavior: prefersReducedMotion() ? "auto" : "smooth" }}
+                    tabIndex={0}
+                >
+                    <article className="mx-auto max-w-3xl">
+                        <h1 className="text-5xl font-ui font-semibold tracking-tight text-text-100">WebGCode 2 Documentation</h1>
+                        <p className="mt-3 text-sm text-text-300">Last updated February 25, 2026</p>
+                        <div className="mt-6 border-t border-border-500 pt-8 space-y-14">
+                            {sections.map((section) => (
+                                <section key={section.id} className="space-y-4">
+                                    <H2 id={section.id} title={section.title} />
+                                    {section.body}
+                                </section>
+                            ))}
                         </div>
                     </article>
+                </main>
 
-                    <article>
-                        <h2 className="text-xl font-code text-text-100 mb-4 border-l-4 border-semantic-motion pl-4">3. Browser-Based Simulation Model</h2>
-                        <ul className="list-disc list-inside space-y-2 text-sm ml-4">
-                            <li>The system utilizes a browser-based, step-deterministic simulation model derived from geometric segments.</li>
-                            <li>Playback is deterministic; the position at any timestamp is computed via a fixed state-contract.</li>
-                            <li>Visual representation is an approximation only.</li>
-                            <li>The engine does not simulate physics, tool deflection, or material removal.</li>
-                        </ul>
-                    </article>
-
-                    <article>
-                        <h2 className="text-xl font-code text-text-100 mb-4 border-l-4 border-semantic-motion pl-4">4. Local-Only File I/O & Handling</h2>
-                        <ul className="list-disc list-inside space-y-2 text-sm ml-4">
-                            <li>WebGCode 2 handles CNC G-code file I/O strictly in a local-only manner, preserving raw text integrity.</li>
-                            <li>Supported extensions: <code className="text-text-100">.gcode, .gc, .ngc, .cnc, .txt</code></li>
-                            <li>The tool handles files as absolute plain-text; encoding is assumed to be UTF-8.</li>
-                            <li>No automatic code formatting is applied during import.</li>
-                            <li>Exported files do not contain injected metadata or identifiers.</li>
-                        </ul>
-                    </article>
-
-                    <article>
-                        <h2 className="text-xl font-code text-text-100 mb-4 border-l-4 border-semantic-motion pl-4">5. Simulation Export (GIF)</h2>
-                        <ul className="list-disc list-inside space-y-2 text-sm ml-4">
-                            <li>The simulation export utility provides a deterministic frame-capture mechanism for CNC toolpath visualization.</li>
-                            <li>Export format is fixed to GIF.</li>
-                            <li>Frame capture is deterministic; frames are triggered at discrete simulation steps.</li>
-                            <li>Resulting media is a visual-only representation without embedded telemetry data.</li>
-                        </ul>
-                    </article>
-
-                    <article className="border-t border-border-500 pt-8 mt-12">
-                        <h2 className="text-xl font-code text-semantic-error mb-4 border-l-4 border-semantic-error pl-4 uppercase">6. Known Limitations</h2>
-                        <ul className="list-disc list-inside space-y-2 text-sm ml-4 text-text-300">
-                            <li>Geometric visualization only: no kerf or tool diameter offset rendering.</li>
-                            <li>Unsupported coordinate offsets will result in visual shifts from nominal zeros.</li>
-                            <li>Performance is limited by browser-based WebGL and client-side hardware capabilities.</li>
-                            <li>No collision detection or tool-holder interference monitoring.</li>
-                        </ul>
-                    </article>
-                </section>
-
-                <footer className="mt-20 pt-8 border-t border-border-500 text-[10px] uppercase tracking-[0.2em] text-center text-text-300">
-                    End of Documentation | WebGCode Engineering
-                </footer>
+                <aside className="hidden w-72 shrink-0 border-l border-border-500 2xl:block">
+                    <div className="sticky top-0 px-5 py-8">
+                        <h3 className="text-sm font-ui font-semibold text-text-100">On this page</h3>
+                        <nav className="mt-3 space-y-1.5">
+                            {RIGHT_RAIL.map((item) => (
+                                <a
+                                    key={item.id}
+                                    href={`#${item.id}`}
+                                    onClick={scrollTo(item.id)}
+                                    className={`block text-sm ${
+                                        active === item.id
+                                            ? "text-text-100"
+                                            : "text-text-300 hover:text-text-100"
+                                    }`}
+                                >
+                                    {item.label}
+                                </a>
+                            ))}
+                        </nav>
+                    </div>
+                </aside>
             </div>
         </div>
     );

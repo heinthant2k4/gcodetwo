@@ -12,14 +12,30 @@
 import { useCallback, useRef, useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useAppStore, selectUILayout, selectSimulationData, selectIsValid } from "@/store";
+import {
+    useAppStore,
+    selectUILayout,
+    selectSimulationData,
+    selectIsValid,
+    selectEditorExtension,
+    selectEditorFilename,
+    selectEditorLineEnding,
+} from "@/store";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import DiagnosticsPanel from "@/components/panels/diagnostics-panel";
 import MachineProfilePanel from "@/components/panels/machine-profile-panel";
 import ViewerControls from "@/components/viewer/viewer-controls";
+import TutorialOverlay from "@/components/tutorial/tutorial-overlay";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { loadGCodeFile, saveGCodeFile } from "@/lib/io/file-handler";
+import {
+    loadGCodeFile,
+    saveGCodeFile,
+    getBasename,
+    SUPPORTED_EXTENSIONS,
+    SupportedExtension,
+} from "@/lib/io/file-handler";
 
 // Dynamic imports for client-only components
 const GCodeEditor = dynamic(
@@ -188,22 +204,47 @@ function ResizeDivider({
 }
 
 // File controls
-function FileControls() {
+function FileControls({ tutorialTarget = false }: { tutorialTarget?: boolean }) {
     const setEditorText = useAppStore((s) => s.setEditorText);
     const editorText = useAppStore((s) => s.editorText);
+    const editorFilename = useAppStore(selectEditorFilename);
+    const editorExtension = useAppStore(selectEditorExtension);
+    const editorLineEnding = useAppStore(selectEditorLineEnding);
+    const [basenameInput, setBasenameInput] = useState(editorFilename);
+    const [selectedExtension, setSelectedExtension] = useState<SupportedExtension>(editorExtension);
+    const [status, setStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+    useEffect(() => {
+        setBasenameInput(editorFilename);
+    }, [editorFilename]);
+
+    useEffect(() => {
+        setSelectedExtension(editorExtension);
+    }, [editorExtension]);
+
+    useEffect(() => {
+        if (!status) return;
+        const timer = setTimeout(() => setStatus(null), 2200);
+        return () => clearTimeout(timer);
+    }, [status]);
 
     const handleOpen = useCallback(() => {
         const input = document.createElement("input");
         input.type = "file";
-        input.accept = ".gcode,.gc,.ngc,.cnc,.txt";
+        input.accept = SUPPORTED_EXTENSIONS.join(",");
         input.onchange = async (e) => {
             const file = (e.target as HTMLInputElement).files?.[0];
             if (file) {
                 const result = await loadGCodeFile(file);
                 if (result.error) {
-                    alert(result.error);
+                    setStatus({ type: "error", message: result.error });
                 } else {
-                    setEditorText(result.content);
+                    setEditorText(result.content, {
+                        filename: getBasename(result.filename),
+                        extension: result.extension,
+                        lineEnding: result.lineEnding,
+                    });
+                    setStatus({ type: "success", message: `Loaded ${result.filename}` });
                 }
             }
         };
@@ -211,11 +252,45 @@ function FileControls() {
     }, [setEditorText]);
 
     const handleSave = useCallback(() => {
-        saveGCodeFile(editorText, "program.gcode");
-    }, [editorText]);
+        const result = saveGCodeFile({
+            content: editorText,
+            basename: basenameInput,
+            extension: selectedExtension,
+            lineEnding: editorLineEnding,
+        });
+
+        if (!result.ok) {
+            setStatus({ type: "error", message: result.error ?? "Export failed." });
+            return;
+        }
+
+        useAppStore.setState({
+            editorFilename: getBasename(result.filename),
+            editorExtension: selectedExtension,
+        });
+        setStatus({ type: "success", message: `Saved ${result.filename}` });
+    }, [basenameInput, editorLineEnding, editorText, selectedExtension]);
 
     return (
-        <>
+        <div className="flex items-center gap-1.5" data-tutorial={tutorialTarget ? "file-controls" : undefined}>
+            <Input
+                value={basenameInput}
+                onChange={(e) => setBasenameInput(e.target.value)}
+                className="h-6 w-28 px-2 text-xs font-code bg-bg-900 border-border-500 text-text-100"
+                aria-label="Export file name"
+            />
+            <select
+                value={selectedExtension}
+                onChange={(e) => setSelectedExtension(e.target.value as SupportedExtension)}
+                className="h-6 rounded-sm border border-border-500 bg-bg-900 px-1.5 text-xs font-code text-text-200"
+                aria-label="Export extension"
+            >
+                {SUPPORTED_EXTENSIONS.map((ext) => (
+                    <option key={ext} value={ext}>
+                        {ext}
+                    </option>
+                ))}
+            </select>
             <Tooltip>
                 <TooltipTrigger asChild>
                     <Button
@@ -235,14 +310,23 @@ function FileControls() {
                         variant="ghost"
                         size="sm"
                         onClick={handleSave}
+                        disabled={editorText.length === 0}
                         className="h-6 px-2 text-xs text-text-300 hover:text-text-100 hover:bg-bg-700"
                     >
-                        Save
+                        Export
                     </Button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="text-xs">Export File (Ctrl+S)</TooltipContent>
             </Tooltip>
-        </>
+            <span
+                className={`w-40 truncate text-[11px] font-code ${
+                    status?.type === "error" ? "text-semantic-error" : "text-semantic-safe"
+                }`}
+                aria-live="polite"
+            >
+                {status?.message ?? ""}
+            </span>
+        </div>
     );
 }
 
@@ -300,15 +384,20 @@ export default function AppShell() {
         if (file) {
             const result = await loadGCodeFile(file);
             if (result.error) {
-                alert(result.error);
+                console.error(result.error);
             } else {
-                setEditorText(result.content);
+                setEditorText(result.content, {
+                    filename: getBasename(result.filename),
+                    extension: result.extension,
+                    lineEnding: result.lineEnding,
+                });
             }
         }
     }, [setEditorText]);
 
     return (
         <div
+            id="app-shell"
             className="flex flex-col h-full w-full bg-bg-900 overflow-hidden"
             onDragOver={handleDragOver}
             onDrop={handleDrop}
@@ -320,7 +409,7 @@ export default function AppShell() {
                         WebGCode 2
                     </span>
                     <div className="w-px h-4 bg-border-500" />
-                    <FileControls />
+                    <FileControls tutorialTarget />
                 </div>
                 <div className="flex items-center gap-3">
                     <div className="flex items-center gap-1 text-xs text-text-300 font-code mr-2" aria-label="System Status">
@@ -473,6 +562,7 @@ export default function AppShell() {
 
             <StatusBar />
             <Footer />
+            <TutorialOverlay />
         </div>
     );
 }

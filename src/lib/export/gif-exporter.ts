@@ -1,4 +1,4 @@
-// @ts-ignore
+// @ts-expect-error gifshot has no shipped types in this project setup.
 import gifshot from "gifshot";
 import { useAppStore } from "@/store";
 

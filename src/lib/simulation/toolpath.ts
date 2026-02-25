@@ -31,8 +31,8 @@ function computeArcLength(
     const cy = start.y + j;
     const radius = Math.sqrt(i * i + j * j);
 
-    let startAngle = Math.atan2(start.y - cy, start.x - cx);
-    let endAngle = Math.atan2(end.y - cy, end.x - cx);
+    const startAngle = Math.atan2(start.y - cy, start.x - cx);
+    const endAngle = Math.atan2(end.y - cy, end.x - cx);
 
     let sweep: number;
     if (clockwise) {

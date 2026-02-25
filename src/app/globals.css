@@ -113,3 +113,15 @@ body {
 .monaco-editor .trail-3 {
   background-color: hsla(217, 91%, 60%, 0.04);
 }
+
+/* Hide native number spinners where custom increment controls are used */
+input.no-spinner {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+input.no-spinner::-webkit-outer-spin-button,
+input.no-spinner::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}

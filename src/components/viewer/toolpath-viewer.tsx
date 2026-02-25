@@ -7,7 +7,6 @@
 import { useRef, useMemo, useEffect } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { OrbitControls, Grid, Line, OrthographicCamera, PerspectiveCamera } from "@react-three/drei";
-import * as THREE from "three";
 import {
     useAppStore,
     selectSimulationData,

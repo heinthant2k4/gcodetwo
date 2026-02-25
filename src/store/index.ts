@@ -11,6 +11,7 @@ import { DEFAULT_MACHINE_PROFILE } from "@/lib/defaults/machine-profile";
 import { parseGCode } from "@/lib/gcode/parser";
 import { validate } from "@/lib/validation/engine";
 import { generateToolpath } from "@/lib/simulation/toolpath";
+import { LineEnding, SupportedExtension } from "@/lib/io/file-handler";
 
 // UI Layout state
 interface UILayout {
@@ -39,6 +40,9 @@ interface ExportState {
 interface AppState {
     // Editor domain
     editorText: string;
+    editorFilename: string;
+    editorExtension: SupportedExtension;
+    editorLineEnding: LineEnding;
     cursorLine: number;
     hoveredLine: number | null;
 
@@ -57,7 +61,14 @@ interface AppState {
     uiLayout: UILayout;
 
     // Actions — editor
-    setEditorText: (text: string) => void;
+    setEditorText: (
+        text: string,
+        metadata?: Partial<{
+            filename: string;
+            extension: SupportedExtension;
+            lineEnding: LineEnding;
+        }>
+    ) => void;
     setCursorLine: (line: number) => void;
     setHoveredLine: (line: number | null) => void;
 
@@ -164,6 +175,9 @@ const initialDerived = computeDerived(INITIAL_TEXT, DEFAULT_MACHINE_PROFILE);
 export const useAppStore = create<AppState>((set, get) => ({
     // Initial state
     editorText: INITIAL_TEXT,
+    editorFilename: "program",
+    editorExtension: ".gcode",
+    editorLineEnding: "\n",
     cursorLine: 1,
     hoveredLine: null,
 
@@ -195,11 +209,14 @@ export const useAppStore = create<AppState>((set, get) => ({
     },
 
     // Editor actions
-    setEditorText: (text) => {
+    setEditorText: (text, metadata) => {
         const profile = get().machineProfile;
         const derived = computeDerived(text, profile);
         set({
             editorText: text,
+            editorFilename: metadata?.filename ?? get().editorFilename,
+            editorExtension: metadata?.extension ?? get().editorExtension,
+            editorLineEnding: metadata?.lineEnding ?? get().editorLineEnding,
             ...derived,
             simulation: { ...get().simulation, playing: false, currentStepIndex: 0, progress: 0 },
         });
@@ -351,6 +368,9 @@ export const useAppStore = create<AppState>((set, get) => ({
 export const selectEditorText = (s: AppState) => s.editorText;
 export const selectCursorLine = (s: AppState) => s.cursorLine;
 export const selectHoveredLine = (s: AppState) => s.hoveredLine;
+export const selectEditorFilename = (s: AppState) => s.editorFilename;
+export const selectEditorExtension = (s: AppState) => s.editorExtension;
+export const selectEditorLineEnding = (s: AppState) => s.editorLineEnding;
 export const selectMachineProfile = (s: AppState) => s.machineProfile;
 export const selectParsedGcode = (s: AppState) => s.parsedGcode;
 export const selectDiagnostics = (s: AppState) => s.diagnostics;

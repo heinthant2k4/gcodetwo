@@ -27,7 +27,7 @@ export default function ViewerControls() {
     const hasData = maxStep > 0;
 
     return (
-        <div className="flex items-center gap-2 px-3 py-1.5 border-t border-border-500 bg-bg-800">
+        <div className="flex items-center gap-2 px-3 py-1.5 border-t border-border-500 bg-bg-800" id="playback-controls">
             {/* Transport controls */}
             <div className="flex items-center gap-1">
                 <Tooltip>
@@ -67,6 +67,7 @@ export default function ViewerControls() {
                             size="sm"
                             onClick={simulation.playing ? pause : play}
                             disabled={!hasData}
+                            id="tutorial-play-button"
                             className="h-7 w-7 p-0 text-text-100 hover:bg-bg-700"
                         >
                             {simulation.playing ? <PauseIcon /> : <PlayIcon />}
