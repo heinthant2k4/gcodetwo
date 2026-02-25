@@ -1,0 +1,95 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  /* Background tokens */
+  --color-bg-900: #0F1216;
+  --color-bg-800: #161A20;
+  --color-bg-700: #1E232B;
+
+  /* Text tokens */
+  --color-text-100: #E6E9EE;
+  --color-text-200: #B8BDC6;
+  --color-text-300: #7C828D;
+
+  /* Border tokens */
+  --color-border-500: #2A2F38;
+
+  /* Semantic tokens */
+  --color-semantic-motion: #3B82F6;
+  --color-semantic-safe: #22C55E;
+  --color-semantic-warn: #FACC15;
+  --color-semantic-error: #EF4444;
+
+  /* Font families */
+  --font-ui: "Inter", "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
+  --font-code: "JetBrains Mono", "IBM Plex Mono", ui-monospace, monospace;
+
+  /* Map shadcn tokens to our design system */
+  --color-background: #0F1216;
+  --color-foreground: #E6E9EE;
+  --font-sans: var(--font-ui);
+  --font-mono: var(--font-code);
+
+  /* shadcn required tokens */
+  --color-primary: #E6E9EE;
+  --color-primary-foreground: #0F1216;
+  --color-secondary: #1E232B;
+  --color-secondary-foreground: #E6E9EE;
+  --color-muted: #1E232B;
+  --color-muted-foreground: #7C828D;
+  --color-accent: #1E232B;
+  --color-accent-foreground: #E6E9EE;
+  --color-destructive: #EF4444;
+  --color-border: #2A2F38;
+  --color-input: #2A2F38;
+  --color-ring: #3B82F6;
+  --color-popover: #161A20;
+  --color-popover-foreground: #E6E9EE;
+  --color-card: #161A20;
+  --color-card-foreground: #E6E9EE;
+
+  --radius-sm: 0.125rem;
+  --radius-md: 0.25rem;
+  --radius-lg: 0.375rem;
+}
+
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-bg-900);
+  color: var(--color-text-100);
+  font-family: var(--font-ui);
+}
+
+@layer base {
+  * {
+    @apply border-border-500;
+    outline-color: var(--color-semantic-motion);
+  }
+}
+
+/* Scrollbar styling for instrument UI feel */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-900);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-500);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-300);
+}
