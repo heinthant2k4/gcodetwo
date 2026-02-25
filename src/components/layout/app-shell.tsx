@@ -350,7 +350,7 @@ export default function AppShell() {
                 <div className="flex overflow-hidden" style={{ height: `${vSplit * 100}%` }}>
                     {/* Editor panel */}
                     <div
-                        className="overflow-hidden border-r border-border-500 flex flex-col"
+                        className="overflow-hidden border-r border-border-500 flex flex-col min-h-0"
                         style={{ width: uiLayout.editorCollapsed ? "32px" : `${hSplit * 100}%` }}
                     >
                         {uiLayout.editorCollapsed ? (
@@ -421,7 +421,7 @@ export default function AppShell() {
                 <div className="flex overflow-hidden" style={{ height: `${(1 - vSplit) * 100}%` }}>
                     {/* Diagnostics panel */}
                     <div
-                        className="overflow-hidden border-r border-border-500"
+                        className="overflow-hidden border-r border-border-500 flex flex-col min-h-0"
                         style={{
                             width: uiLayout.diagnosticsCollapsed
                                 ? "32px"
@@ -447,7 +447,7 @@ export default function AppShell() {
 
                     {/* Machine Profile panel */}
                     <div
-                        className="overflow-hidden"
+                        className="overflow-hidden flex flex-col min-h-0"
                         style={{
                             width: uiLayout.machineProfileCollapsed
                                 ? "32px"
