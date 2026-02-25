@@ -17,6 +17,7 @@ import {
     selectUILayout,
     selectSimulationData,
     selectIsValid,
+    selectEditorLineCount,
     selectEditorExtension,
     selectEditorFilename,
     selectEditorLineEnding,
@@ -25,7 +26,6 @@ import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import DiagnosticsPanel from "@/components/panels/diagnostics-panel";
 import MachineProfilePanel from "@/components/panels/machine-profile-panel";
 import ViewerControls from "@/components/viewer/viewer-controls";
-import TutorialOverlay from "@/components/tutorial/tutorial-overlay";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -46,6 +46,11 @@ const GCodeEditor = dynamic(
 const ToolpathViewer = dynamic(
     () => import("@/components/viewer/toolpath-viewer"),
     { ssr: false, loading: () => <PanelLoader label="Viewer" /> }
+);
+
+const TutorialOverlay = dynamic(
+    () => import("@/components/tutorial/tutorial-overlay"),
+    { ssr: false }
 );
 
 function PanelLoader({ label }: { label: string }) {
@@ -94,11 +99,10 @@ function PanelHeader({
 function StatusBar() {
     const simData = useAppStore(selectSimulationData);
     const isValid = useAppStore(selectIsValid);
-    const editorText = useAppStore((s) => s.editorText);
+    const lineCount = useAppStore(selectEditorLineCount);
     const cursorLine = useAppStore((s) => s.cursorLine);
     const machineProfile = useAppStore((s) => s.machineProfile);
 
-    const lineCount = editorText.split("\n").length;
     const segmentCount = simData.segments.length;
     const totalDist = simData.totalDistance.toFixed(1);
     const totalTime = simData.totalTime.toFixed(1);

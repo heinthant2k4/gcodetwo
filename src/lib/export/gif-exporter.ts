@@ -15,10 +15,21 @@ export async function exportSimulationAsGif(canvas: HTMLCanvasElement) {
         return;
     }
 
+    const previousStep = store.simulation.currentStepIndex;
+    const wasPlaying = store.simulation.playing;
+    if (wasPlaying) {
+        store.pause();
+    }
+
     // Enter export mode
     store.startExport();
 
     try {
+        if (canvas.width === 0 || canvas.height === 0) {
+            alert("Export failed: viewer canvas is not ready.");
+            return;
+        }
+
         const frames: string[] = [];
 
         // Target around 50-100 frames for the GIF to keep size reasonable
@@ -37,45 +48,62 @@ export async function exportSimulationAsGif(canvas: HTMLCanvasElement) {
             await new Promise((resolve) => requestAnimationFrame(resolve));
 
             // Capture the current frame
-            frames.push(canvas.toDataURL("image/png"));
+            try {
+                frames.push(canvas.toDataURL("image/png"));
+            } catch {
+                alert("Export failed: unable to read viewer buffer.");
+                return;
+            }
 
             // Update progress (first 50% is capturing)
             const progress = Math.floor((frames.length / totalSteps) * 50);
             store.updateExportProgress(progress);
         }
 
-        // Create the GIF using gifshot
-        gifshot.createGIF(
-            {
-                images: frames,
-                gifWidth: canvas.width,
-                gifHeight: canvas.height,
-                interval: 0.1, // 10 FPS
-                numWorkers: 2,
-            },
-            (obj: { error: boolean; image: string; errorCode: string; errorMsg: string }) => {
-                if (!obj.error) {
-                    const link = document.createElement("a");
-                    link.href = obj.image;
-                    link.download = `simulation_${new Date().getTime()}.gif`;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                } else {
-                    console.error("GIF Export failed:", obj.errorMsg);
-                    alert(`Export failed: ${obj.errorMsg}`);
-                }
-                store.finishExport();
-            }
-        );
+        const result = await new Promise<{ image: string }>((resolve, reject) => {
+            gifshot.createGIF(
+                {
+                    images: frames,
+                    gifWidth: canvas.width,
+                    gifHeight: canvas.height,
+                    interval: 0.1, // 10 FPS
+                    numWorkers: 2,
+                },
+                (obj: { error?: boolean; image?: string; errorCode?: string; errorMsg?: string }) => {
+                    if (!obj.error && obj.image) {
+                        resolve({ image: obj.image });
+                        return;
+                    }
 
-        // gifshot doesn't provide granular progress during encoding in a simple way
-        // So we just set it to 100% when encoding is done (handled in callback)
+                    const msg =
+                        obj.errorMsg?.trim() ||
+                        obj.errorCode?.trim() ||
+                        "GIF encoder returned an unknown error.";
+                    reject(new Error(msg));
+                }
+            );
+        });
+
         store.updateExportProgress(100);
+        const link = document.createElement("a");
+        link.href = result.image;
+        link.download = `simulation_${Date.now()}.gif`;
+        link.style.display = "none";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
 
     } catch (error) {
         console.error("Export process error:", error);
-        alert("An error occurred during export.");
+        const message = error instanceof Error && error.message
+            ? error.message
+            : "An unknown export error occurred.";
+        alert(`Export failed: ${message}`);
+    } finally {
+        store.jumpToStep(previousStep);
+        if (wasPlaying) {
+            store.play();
+        }
         store.finishExport();
     }
 }

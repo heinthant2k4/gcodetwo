@@ -39,7 +39,12 @@ export const useTutorialStore = create<TutorialState>()(
             actionCompleted: initialActions,
             initialized: false,
             initialize: () => {
-                const seen = localStorage.getItem("webgcode_has_seen_tutorial") === "true";
+                let seen = false;
+                try {
+                    seen = localStorage.getItem("webgcode_has_seen_tutorial") === "true";
+                } catch {
+                    seen = false;
+                }
                 const step = Math.max(0, Math.min(get().currentStep, TUTORIAL_STEPS.length - 1));
 
                 set({
@@ -66,7 +71,11 @@ export const useTutorialStore = create<TutorialState>()(
                     actionCompleted: { ...initialActions },
                 }),
             complete: () => {
-                localStorage.setItem("webgcode_has_seen_tutorial", "true");
+                try {
+                    localStorage.setItem("webgcode_has_seen_tutorial", "true");
+                } catch {
+                    // Ignore storage failures; tutorial state still completes for this session.
+                }
                 set({
                     active: false,
                     hasSeen: true,

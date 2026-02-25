@@ -87,8 +87,9 @@ export default function GCodeEditor() {
     );
 
     // Track simulation state for instrumentation
-    const simulation = useAppStore((s) => s.simulation);
-    const simulationData = useAppStore((s) => s.simulationData);
+    const currentStepIndex = useAppStore((s) => s.simulation.currentStepIndex);
+    const isPlaying = useAppStore((s) => s.simulation.playing);
+    const steps = useAppStore((s) => s.simulationData.steps);
     const autoScroll = useAppStore((s) => s.uiLayout.autoScrollToActiveLine);
     const decorationIdsRef = useRef<string[]>([]);
 
@@ -97,9 +98,6 @@ export default function GCodeEditor() {
         const editor = editorRef.current;
         const monaco = monacoRef.current;
         if (!editor || !monaco) return;
-
-        const { currentStepIndex } = simulation;
-        const { steps } = simulationData;
 
         if (steps.length === 0 || currentStepIndex >= steps.length) {
             decorationIdsRef.current = editor.deltaDecorations(decorationIdsRef.current, []);
@@ -144,10 +142,10 @@ export default function GCodeEditor() {
         decorationIdsRef.current = editor.deltaDecorations(decorationIdsRef.current, newDecorations);
 
         // Auto-scroll logic
-        if (autoScroll && simulation.playing) {
+        if (autoScroll && isPlaying) {
             editor.revealLineInCenterIfOutsideViewport(currentLine);
         }
-    }, [simulation.currentStepIndex, simulation.playing, simulationData.steps, autoScroll]);
+    }, [currentStepIndex, isPlaying, steps, autoScroll]);
 
     // Update error markers when diagnostics change
     useEffect(() => {

@@ -3,17 +3,20 @@
 // Viewer Controls — Play/Pause/Stop/Step/Scrub + 2D/3D toggle
 // Deterministic controls with clear state feedback
 
-import { useAppStore, selectSimulation, selectSimulationData, selectUILayout } from "@/store";
+import { useAppStore } from "@/store";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Toggle } from "@/components/ui/toggle";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export default function ViewerControls() {
-    const simulation = useAppStore(selectSimulation);
+    const simulationPlaying = useAppStore((s) => s.simulation.playing);
+    const currentStepIndex = useAppStore((s) => s.simulation.currentStepIndex);
+    const speed = useAppStore((s) => s.simulation.speed);
     const exportProgress = useAppStore((s) => s.exportProgress);
-    const simulationData = useAppStore(selectSimulationData);
-    const uiLayout = useAppStore(selectUILayout);
+    const maxStep = useAppStore((s) => s.simulationData.segments.length);
+    const viewMode = useAppStore((s) => s.uiLayout.viewMode);
+    const autoScrollToActiveLine = useAppStore((s) => s.uiLayout.autoScrollToActiveLine);
     const play = useAppStore((s) => s.play);
     const pause = useAppStore((s) => s.pause);
     const stop = useAppStore((s) => s.stop);
@@ -23,7 +26,6 @@ export default function ViewerControls() {
     const setViewMode = useAppStore((s) => s.setViewMode);
     const setSpeed = useAppStore((s) => s.setSpeed);
 
-    const maxStep = simulationData.segments.length;
     const hasData = maxStep > 0;
 
     return (
@@ -51,7 +53,7 @@ export default function ViewerControls() {
                             variant="ghost"
                             size="sm"
                             onClick={stepBackward}
-                            disabled={!hasData || simulation.currentStepIndex <= 0}
+                            disabled={!hasData || currentStepIndex <= 0}
                             className="h-7 w-7 p-0 text-text-200 hover:text-text-100 hover:bg-bg-700"
                         >
                             <StepBackIcon />
@@ -65,16 +67,16 @@ export default function ViewerControls() {
                         <Button
                             variant="ghost"
                             size="sm"
-                            onClick={simulation.playing ? pause : play}
+                            onClick={simulationPlaying ? pause : play}
                             disabled={!hasData}
                             id="tutorial-play-button"
                             className="h-7 w-7 p-0 text-text-100 hover:bg-bg-700"
                         >
-                            {simulation.playing ? <PauseIcon /> : <PlayIcon />}
+                            {simulationPlaying ? <PauseIcon /> : <PlayIcon />}
                         </Button>
                     </TooltipTrigger>
                     <TooltipContent side="top" className="text-xs">
-                        {simulation.playing ? "Pause" : "Play"} (Shift+Space)
+                        {simulationPlaying ? "Pause" : "Play"} (Shift+Space)
                     </TooltipContent>
                 </Tooltip>
 
@@ -84,7 +86,7 @@ export default function ViewerControls() {
                             variant="ghost"
                             size="sm"
                             onClick={stepForward}
-                            disabled={!hasData || simulation.currentStepIndex >= maxStep}
+                            disabled={!hasData || currentStepIndex >= maxStep}
                             className="h-7 w-7 p-0 text-text-200 hover:text-text-100 hover:bg-bg-700"
                         >
                             <StepForwardIcon />
@@ -97,7 +99,7 @@ export default function ViewerControls() {
             {/* Scrub slider */}
             <div className="flex-1 mx-2">
                 <Slider
-                    value={[simulation.currentStepIndex]}
+                    value={[currentStepIndex]}
                     min={0}
                     max={Math.max(maxStep, 1)}
                     step={1}
@@ -109,7 +111,7 @@ export default function ViewerControls() {
 
             {/* Step counter */}
             <span className="text-xs font-code text-text-300 min-w-[60px] text-right tabular-nums">
-                {simulation.currentStepIndex}/{maxStep}
+                {currentStepIndex}/{maxStep}
             </span>
 
             {/* Separator */}
@@ -123,13 +125,13 @@ export default function ViewerControls() {
                         size="sm"
                         onClick={() => {
                             const speeds = [0.25, 0.5, 1, 2, 4];
-                            const idx = speeds.indexOf(simulation.speed);
+                            const idx = speeds.indexOf(speed);
                             const next = speeds[(idx + 1) % speeds.length];
                             setSpeed(next);
                         }}
                         className="h-7 px-1.5 text-xs font-code text-text-300 hover:text-text-100 hover:bg-bg-700 tabular-nums"
                     >
-                        {simulation.speed}×
+                        {speed}×
                     </Button>
                 </TooltipTrigger>
                 <TooltipContent side="top" className="text-xs">Playback Speed</TooltipContent>
@@ -139,7 +141,7 @@ export default function ViewerControls() {
             <Tooltip>
                 <TooltipTrigger asChild>
                     <Toggle
-                        pressed={uiLayout.viewMode === "2d"}
+                        pressed={viewMode === "2d"}
                         onPressedChange={(pressed) => setViewMode(pressed ? "2d" : "3d")}
                         size="sm"
                         className="h-7 px-2 text-xs font-code text-text-300 data-[state=on]:text-text-100 data-[state=on]:bg-bg-700"
@@ -154,7 +156,7 @@ export default function ViewerControls() {
             <Tooltip>
                 <TooltipTrigger asChild>
                     <Toggle
-                        pressed={uiLayout.autoScrollToActiveLine}
+                        pressed={autoScrollToActiveLine}
                         onPressedChange={(pressed) => {
                             useAppStore.getState().setAutoScroll(pressed);
                         }}
@@ -174,12 +176,21 @@ export default function ViewerControls() {
                         variant="ghost"
                         size="sm"
                         onClick={() => {
-                            const canvas = document.querySelector("canvas");
-                            if (canvas) {
-                                void import("@/lib/export/gif-exporter").then((mod) => {
-                                    mod.exportSimulationAsGif(canvas);
-                                });
+                            const canvas = document.querySelector("#viewer-panel canvas");
+                            if (!(canvas instanceof HTMLCanvasElement)) {
+                                alert("Export failed: viewer canvas not found.");
+                                return;
                             }
+
+                            void import("@/lib/export/gif-exporter")
+                                .then((mod) => mod.exportSimulationAsGif(canvas))
+                                .catch((error) => {
+                                    const message =
+                                        error instanceof Error && error.message
+                                            ? error.message
+                                            : "Unable to load exporter module.";
+                                    alert(`Export failed: ${message}`);
+                                });
                         }}
                         disabled={!hasData || exportProgress.exporting}
                         className="h-7 px-2 text-xs font-ui text-text-300 hover:text-text-100 hover:bg-bg-700"

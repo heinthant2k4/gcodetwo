@@ -28,6 +28,7 @@ interface SimulationPlayback {
     playing: boolean;
     currentStepIndex: number;
     progress: number;
+    elapsedTime: number;
     speed: number;
 }
 
@@ -40,6 +41,7 @@ interface ExportState {
 interface AppState {
     // Editor domain
     editorText: string;
+    editorLineCount: number;
     editorFilename: string;
     editorExtension: SupportedExtension;
     editorLineEnding: LineEnding;
@@ -171,10 +173,12 @@ M2 ; End program
 `;
 
 const initialDerived = computeDerived(INITIAL_TEXT, DEFAULT_MACHINE_PROFILE);
+const INITIAL_LINE_COUNT = INITIAL_TEXT.split("\n").length;
 
 export const useAppStore = create<AppState>((set, get) => ({
     // Initial state
     editorText: INITIAL_TEXT,
+    editorLineCount: INITIAL_LINE_COUNT,
     editorFilename: "program",
     editorExtension: ".gcode",
     editorLineEnding: "\n",
@@ -191,6 +195,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         playing: false,
         currentStepIndex: 0,
         progress: 0,
+        elapsedTime: 0,
         speed: 1,
     },
 
@@ -214,11 +219,12 @@ export const useAppStore = create<AppState>((set, get) => ({
         const derived = computeDerived(text, profile);
         set({
             editorText: text,
+            editorLineCount: text === "" ? 1 : text.split("\n").length,
             editorFilename: metadata?.filename ?? get().editorFilename,
             editorExtension: metadata?.extension ?? get().editorExtension,
             editorLineEnding: metadata?.lineEnding ?? get().editorLineEnding,
             ...derived,
-            simulation: { ...get().simulation, playing: false, currentStepIndex: 0, progress: 0 },
+            simulation: { ...get().simulation, playing: false, currentStepIndex: 0, progress: 0, elapsedTime: 0 },
         });
     },
 
@@ -232,7 +238,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         set({
             machineProfile: profile,
             ...derived,
-            simulation: { ...get().simulation, playing: false, currentStepIndex: 0, progress: 0 },
+            simulation: { ...get().simulation, playing: false, currentStepIndex: 0, progress: 0, elapsedTime: 0 },
         });
     },
 
@@ -244,7 +250,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         set({
             machineProfile: profile,
             ...derived,
-            simulation: { ...get().simulation, playing: false, currentStepIndex: 0, progress: 0 },
+            simulation: { ...get().simulation, playing: false, currentStepIndex: 0, progress: 0, elapsedTime: 0 },
         });
     },
 
@@ -261,7 +267,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     stop: () =>
         set((s) => ({
-            simulation: { ...s.simulation, playing: false, currentStepIndex: 0, progress: 0 },
+            simulation: { ...s.simulation, playing: false, currentStepIndex: 0, progress: 0, elapsedTime: 0 },
         })),
 
     stepForward: () =>
@@ -274,6 +280,7 @@ export const useAppStore = create<AppState>((set, get) => ({
                     playing: false,
                     currentStepIndex: nextStep,
                     progress: nextStep,
+                    elapsedTime: s.simulationData.steps[nextStep]?.cumulativeTime ?? 0,
                 },
             };
         }),
@@ -287,40 +294,65 @@ export const useAppStore = create<AppState>((set, get) => ({
                     playing: false,
                     currentStepIndex: nextStep,
                     progress: nextStep,
+                    elapsedTime: s.simulationData.steps[nextStep]?.cumulativeTime ?? 0,
                 },
             };
         }),
 
     jumpToStep: (step: number) =>
-        set((s) => ({
-            simulation: { ...s.simulation, currentStepIndex: step, progress: step },
-        })),
+        set((s) => {
+            const maxStep = s.simulationData.segments.length;
+            const clampedStep = Math.max(0, Math.min(step, maxStep));
+            return {
+                simulation: {
+                    ...s.simulation,
+                    currentStepIndex: clampedStep,
+                    progress: clampedStep,
+                    elapsedTime: s.simulationData.steps[clampedStep]?.cumulativeTime ?? 0,
+                },
+            };
+        }),
 
     tick: (delta: number) =>
         set((s) => {
             if (!s.simulation.playing) return s;
             const maxStep = s.simulationData.segments.length;
-            if (maxStep === 0) return s;
+            const totalTime = s.simulationData.totalTime;
+            if (maxStep === 0 || totalTime <= 0) return s;
 
-            // speed is steps per second
-            const nextProgress = s.simulation.progress + delta * s.simulation.speed * 10;
-
-            if (nextProgress >= maxStep) {
+            // Deterministic playback clock based on toolpath cumulative time.
+            const nextElapsed = s.simulation.elapsedTime + delta * s.simulation.speed;
+            if (nextElapsed >= totalTime) {
                 return {
                     simulation: {
                         ...s.simulation,
                         playing: false,
                         currentStepIndex: maxStep,
                         progress: maxStep,
+                        elapsedTime: totalTime,
                     },
                 };
             }
 
+            const steps = s.simulationData.steps;
+            let lo = 0;
+            let hi = steps.length - 1;
+            while (lo <= hi) {
+                const mid = (lo + hi) >> 1;
+                if (steps[mid].cumulativeTime <= nextElapsed) {
+                    lo = mid + 1;
+                } else {
+                    hi = mid - 1;
+                }
+            }
+
+            const nextStepIndex = Math.max(0, Math.min(hi, maxStep));
             return {
                 simulation: {
                     ...s.simulation,
-                    currentStepIndex: Math.floor(nextProgress),
-                    progress: nextProgress,
+                    currentStepIndex: nextStepIndex,
+                    progress: nextStepIndex,
+                    elapsedTime: nextElapsed,
                 },
             };
         }),
@@ -366,6 +398,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
 // Selectors for optimized re-renders
 export const selectEditorText = (s: AppState) => s.editorText;
+export const selectEditorLineCount = (s: AppState) => s.editorLineCount;
 export const selectCursorLine = (s: AppState) => s.cursorLine;
 export const selectHoveredLine = (s: AppState) => s.hoveredLine;
 export const selectEditorFilename = (s: AppState) => s.editorFilename;
