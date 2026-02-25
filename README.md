@@ -1,36 +1,95 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# WebGCode 2 | Engineering Documentation
 
-## Getting Started
+WebGCode 2 is a high-performance, deterministic, and local-only G-code editor, validator, and 3D simulation tool. Designed for CNC machinists and software engineers, it prioritizes absolute state consistency and precise toolpath visualization over traditional web aesthetics.
 
-First, run the development server:
+## 1. Product Philosophy: The "Instrument UI"
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+WebGCode 2 is built as an **Instrument**, not just an application.
+- **Deterministic**: Every simulation step is discrete and reproducible. Playback is immune to frame-rate fluctuations or CPU load.
+- **Local-Only**: Data residency is strictly on-client. No backend, no telemetry, no cloud persistence.
+- **State-Driven**: The entire application is a pure projection of the `editorText` and `machineProfile` state stored in Zustand.
+
+## 2. System Architecture
+
+The application follows a unidirectional data flow model where the editor content serves as the Single Source of Truth.
+
+```mermaid
+graph TD
+    A[Editor Text] --> B[G-code Parser]
+    B --> C[Instruction List]
+    C --> D[Validation Engine]
+    C --> E[Simulation Pipeline]
+    F[Machine Profile] --> D
+    D --> G[Diagnostics Panel]
+    E --> H[Toolpath Segments]
+    H --> I[Three.js Viewer]
+    I --> J[Playback Controller]
+    J --> I
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2.1 G-code Parser & Tokenizer
+A robust, non-mutating parser that converts raw G-code into structured objects.
+- **Tokenizer**: Line-by-line scanning with comment handling (`;` and `()`).
+- **Classification**: Distinguishes between Motion commands (G), Miscellaneous commands (M), and Parameters (X, Y, Z, F, S, etc.).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 2.2 Validation Engine
+Real-time rule-based validation against the active Machine Profile.
+- **Axis Limits**: Checks if any command exceeds X, Y, or Z travel limits.
+- **Command Support**: Identifies unsupported or deprecated G/M codes.
+- **Parameter Integrity**: Ensures mandatory parameters (like feed rates) are present where required.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 2.3 Simulation & Playback
+The simulator computes precise tool movements between coordinates.
+- **Motion Types**: Support for Rapid Positioning (G0), Linear Interpolation (G1), and Arc Interpolation (G2/G3).
+- **Step-Based Progress**: Advancement is calculated using `currentStepIndex` (integer) and `preciseProgress` (float), ensuring 100% deterministic scrubbing and play/pause behavior.
 
-## Learn More
+## 3. Technical Specifications
 
-To learn more about Next.js, take a look at the following resources:
+| Category      | Technology | Rationale |
+| :---          | :---       | :--- |
+| **Framework** | Next.js 15 (App Router) | Modern react patterns, optimized routing. |
+| **State**     | Zustand | Low-latency, atomic state updates. |
+| **Editor**    | Monaco Editor | Industrial-grade code editing and marker support. |
+| **Rendering** | Three.js (R3F) | High-performance WebGL toolpath visualization. |
+| **Styling**   | Tailwind CSS v4 | Strict adherence to engineering design tokens. |
+| **Export**    | gifshot | Deterministic frame-capture for documentation. |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 4. Engineering Standards
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 4.1 Design Tokens (Locked)
+The UI uses a strict color and typography palette to maintain an "Instrument" look:
+- **Surface**: `#0F1216` (Deep BG), `#1A1F26` (Panel BG)
+- **Primary**: `#3B82F6` (Motion Blue)
+- **Secondary**: `#10B981` (Safe Green)
+- **High Alert**: `#EF4444` (Error Red)
+- **Fonts**: Inter (UI), JetBrains Mono (Code)
 
-## Deploy on Vercel
+### 4.2 Workspace Configuration
+- **Root Context**: The project is isolated to ensure Next.js Turbopack correctly identifies the root directory.
+- **File Watching**: Configured to handle standard OS `inotify` limits for large engineering projects.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 5. Development
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Prerequisites
+- Node.js 18+
+- npm 9+
+
+### Execution
+```bash
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+
+# Production build & verification
+npm run build
+```
+
+## 6. File I/O Specifications
+- **Supported Extensions**: `.gcode`, `.gc`, `.ngc`, `.cnc`, `.txt`
+- **Import**: File picker or global Drag-and-Drop listener.
+- **Export**: GIF (Simulation Export), `.gcode` (Source Export).
+
+---
+© 2026 WebGCode Engineering Team. Confidential & Local-Only.
