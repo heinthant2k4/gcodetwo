@@ -16,6 +16,7 @@ import {
     selectHoveredLine,
 } from "@/store";
 import { ToolpathSegment, MotionType } from "@/lib/types/simulation";
+import ExportOverlay from "./export-overlay";
 
 // Color mapping for motion types — matches design tokens
 const MOTION_COLORS: Record<MotionType, string> = {
@@ -106,23 +107,12 @@ function CameraController({ boundingBox }: { boundingBox: { min: { x: number; y:
 
 // Auto-play animation
 function PlaybackController() {
-    const simulation = useAppStore(selectSimulation);
-    const simulationData = useAppStore(selectSimulationData);
-    const setCurrentStep = useAppStore((s) => s.setCurrentStep);
-    const pause = useAppStore((s) => s.pause);
+    const tick = useAppStore((s) => s.tick);
 
     useFrame((_, delta) => {
-        if (!simulation.playing) return;
-        const maxStep = simulationData.segments.length;
-        if (maxStep === 0) return;
-
-        const nextStep = simulation.currentStep + delta * simulation.speed * 10;
-        if (nextStep >= maxStep) {
-            setCurrentStep(maxStep);
-            pause();
-        } else {
-            setCurrentStep(Math.floor(nextStep));
-        }
+        // High-precision tick dispatched to store
+        // delta is time since last frame in seconds
+        tick(delta);
     });
 
     return null;
@@ -136,16 +126,17 @@ function ToolpathScene() {
     const uiLayout = useAppStore(selectUILayout);
 
     const segments = simulationData.segments;
-    const currentStep = simulation.currentStep;
+    const currentStepIndex = simulation.currentStepIndex;
 
     // Get current tool position
     const toolPosition = useMemo<[number, number, number]>(() => {
         if (segments.length === 0) return [0, 0, 0];
-        const idx = Math.min(currentStep, segments.length - 1);
+        // If we are parked at a step, show position at the end of the previous segment or start of current
+        const idx = Math.min(currentStepIndex, segments.length - 1);
         const seg = segments[idx];
-        const pos = currentStep >= segments.length ? seg.endPoint : seg.startPoint;
+        const pos = currentStepIndex >= segments.length ? seg.endPoint : seg.startPoint;
         return [pos.x, pos.z, -pos.y];
-    }, [segments, currentStep]);
+    }, [segments, currentStepIndex]);
 
     return (
         <>
@@ -185,7 +176,7 @@ function ToolpathScene() {
                     key={segment.index}
                     segment={segment}
                     isHighlighted={hoveredLine !== null && segment.sourceLine === hoveredLine}
-                    isBeforeCurrent={segment.index < currentStep}
+                    isBeforeCurrent={segment.index < currentStepIndex}
                 />
             ))}
 
@@ -206,9 +197,9 @@ function ToolpathScene() {
 
 export default function ToolpathViewer() {
     return (
-        <div className="h-full w-full bg-bg-900" id="viewer-panel">
+        <div className="h-full w-full bg-bg-900 relative" id="viewer-panel">
             <Canvas
-                gl={{ antialias: true, alpha: false }}
+                gl={{ antialias: true, alpha: false, preserveDrawingBuffer: true }}
                 style={{ background: "#0F1216" }}
                 onCreated={({ gl }) => {
                     gl.setClearColor("#0F1216");
@@ -216,6 +207,7 @@ export default function ToolpathViewer() {
             >
                 <ToolpathScene />
             </Canvas>
+            <ExportOverlay />
         </div>
     );
 }

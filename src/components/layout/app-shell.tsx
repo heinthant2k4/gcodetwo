@@ -18,6 +18,7 @@ import MachineProfilePanel from "@/components/panels/machine-profile-panel";
 import ViewerControls from "@/components/viewer/viewer-controls";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { loadGCodeFile, saveGCodeFile } from "@/lib/io/file-handler";
 
 // Dynamic imports for client-only components
 const GCodeEditor = dynamic(
@@ -147,8 +148,8 @@ function ResizeDivider({
         <div
             onMouseDown={handleMouseDown}
             className={`flex-shrink-0 bg-border-500 hover:bg-semantic-motion ${direction === "horizontal"
-                    ? "w-px cursor-col-resize hover:w-0.5"
-                    : "h-px cursor-row-resize hover:h-0.5"
+                ? "w-px cursor-col-resize hover:w-0.5"
+                : "h-px cursor-row-resize hover:h-0.5"
                 }`}
             style={{ transition: "background-color 150ms" }}
         />
@@ -163,29 +164,23 @@ function FileControls() {
     const handleOpen = useCallback(() => {
         const input = document.createElement("input");
         input.type = "file";
-        input.accept = ".gcode,.nc,.ngc,.tap,.txt";
-        input.onchange = (e) => {
+        input.accept = ".gcode,.gc,.ngc,.cnc,.txt";
+        input.onchange = async (e) => {
             const file = (e.target as HTMLInputElement).files?.[0];
             if (file) {
-                const reader = new FileReader();
-                reader.onload = (ev) => {
-                    const content = ev.target?.result as string;
-                    if (content) setEditorText(content);
-                };
-                reader.readAsText(file);
+                const result = await loadGCodeFile(file);
+                if (result.error) {
+                    alert(result.error);
+                } else {
+                    setEditorText(result.content);
+                }
             }
         };
         input.click();
     }, [setEditorText]);
 
     const handleSave = useCallback(() => {
-        const blob = new Blob([editorText], { type: "text/plain" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "program.gcode";
-        a.click();
-        URL.revokeObjectURL(url);
+        saveGCodeFile(editorText, "program.gcode");
     }, [editorText]);
 
     return (
@@ -225,6 +220,7 @@ export default function AppShell() {
 
     const uiLayout = useAppStore(selectUILayout);
     const togglePanel = useAppStore((s) => s.togglePanel);
+    const setEditorText = useAppStore((s) => s.setEditorText);
 
     // Resizable proportions
     const [hSplit, setHSplit] = useState(0.45); // horizontal split (editor | viewer)
@@ -260,8 +256,32 @@ export default function AppShell() {
         []
     );
 
+    const handleDragOver = useCallback((e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+    }, []);
+
+    const handleDrop = useCallback(async (e: React.DragEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const file = e.dataTransfer.files?.[0];
+        if (file) {
+            const result = await loadGCodeFile(file);
+            if (result.error) {
+                alert(result.error);
+            } else {
+                setEditorText(result.content);
+            }
+        }
+    }, [setEditorText]);
+
     return (
-        <div className="flex flex-col h-screen w-screen bg-bg-900 overflow-hidden">
+        <div
+            className="flex flex-col h-screen w-screen bg-bg-900 overflow-hidden"
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+        >
             {/* Top bar */}
             <div className="flex items-center justify-between px-3 py-1 border-b border-border-500 bg-bg-800">
                 <div className="flex items-center gap-3">

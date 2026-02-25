@@ -24,8 +24,14 @@ interface UILayout {
 // Simulation playback state
 interface SimulationPlayback {
     playing: boolean;
-    currentStep: number;
-    speed: number; // multiplier
+    currentStepIndex: number;
+    progress: number;
+    speed: number;
+}
+
+interface ExportState {
+    exporting: boolean;
+    progress: number; // 0 to 100
 }
 
 // Complete store state
@@ -58,14 +64,23 @@ interface AppState {
     setMachineProfile: (profile: MachineProfile) => void;
     updateMachineProfile: (updates: Partial<MachineProfile>) => void;
 
+    // Export domain
+    exportProgress: ExportState;
+
     // Actions — simulation
     play: () => void;
     pause: () => void;
     stop: () => void;
     stepForward: () => void;
     stepBackward: () => void;
-    setCurrentStep: (step: number) => void;
+    jumpToStep: (step: number) => void;
+    tick: (delta: number) => void;
     setSpeed: (speed: number) => void;
+
+    // Actions — export
+    startExport: () => void;
+    updateExportProgress: (progress: number) => void;
+    finishExport: () => void;
 
     // Actions — UI layout
     togglePanel: (panel: keyof Omit<UILayout, "viewMode">) => void;
@@ -158,7 +173,8 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     simulation: {
         playing: false,
-        currentStep: 0,
+        currentStepIndex: 0,
+        progress: 0,
         speed: 1,
     },
 
@@ -170,6 +186,11 @@ export const useAppStore = create<AppState>((set, get) => ({
         viewMode: "3d",
     },
 
+    exportProgress: {
+        exporting: false,
+        progress: 0,
+    },
+
     // Editor actions
     setEditorText: (text) => {
         const profile = get().machineProfile;
@@ -177,7 +198,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         set({
             editorText: text,
             ...derived,
-            simulation: { ...get().simulation, playing: false, currentStep: 0 },
+            simulation: { ...get().simulation, playing: false, currentStepIndex: 0, progress: 0 },
         });
     },
 
@@ -191,7 +212,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         set({
             machineProfile: profile,
             ...derived,
-            simulation: { ...get().simulation, playing: false, currentStep: 0 },
+            simulation: { ...get().simulation, playing: false, currentStepIndex: 0, progress: 0 },
         });
     },
 
@@ -203,7 +224,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         set({
             machineProfile: profile,
             ...derived,
-            simulation: { ...get().simulation, playing: false, currentStep: 0 },
+            simulation: { ...get().simulation, playing: false, currentStepIndex: 0, progress: 0 },
         });
     },
 
@@ -220,38 +241,90 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     stop: () =>
         set((s) => ({
-            simulation: { ...s.simulation, playing: false, currentStep: 0 },
+            simulation: { ...s.simulation, playing: false, currentStepIndex: 0, progress: 0 },
         })),
 
     stepForward: () =>
         set((s) => {
             const maxStep = s.simulationData.segments.length;
+            const nextStep = Math.min(s.simulation.currentStepIndex + 1, maxStep);
             return {
                 simulation: {
                     ...s.simulation,
                     playing: false,
-                    currentStep: Math.min(s.simulation.currentStep + 1, maxStep),
+                    currentStepIndex: nextStep,
+                    progress: nextStep,
                 },
             };
         }),
 
     stepBackward: () =>
+        set((s) => {
+            const nextStep = Math.max(s.simulation.currentStepIndex - 1, 0);
+            return {
+                simulation: {
+                    ...s.simulation,
+                    playing: false,
+                    currentStepIndex: nextStep,
+                    progress: nextStep,
+                },
+            };
+        }),
+
+    jumpToStep: (step: number) =>
         set((s) => ({
-            simulation: {
-                ...s.simulation,
-                playing: false,
-                currentStep: Math.max(s.simulation.currentStep - 1, 0),
-            },
+            simulation: { ...s.simulation, currentStepIndex: step, progress: step },
         })),
 
-    setCurrentStep: (step) =>
-        set((s) => ({
-            simulation: { ...s.simulation, currentStep: step },
-        })),
+    tick: (delta: number) =>
+        set((s) => {
+            if (!s.simulation.playing) return s;
+            const maxStep = s.simulationData.segments.length;
+            if (maxStep === 0) return s;
 
-    setSpeed: (speed) =>
+            // speed is steps per second
+            const nextProgress = s.simulation.progress + delta * s.simulation.speed * 10;
+
+            if (nextProgress >= maxStep) {
+                return {
+                    simulation: {
+                        ...s.simulation,
+                        playing: false,
+                        currentStepIndex: maxStep,
+                        progress: maxStep,
+                    },
+                };
+            }
+
+            return {
+                simulation: {
+                    ...s.simulation,
+                    currentStepIndex: Math.floor(nextProgress),
+                    progress: nextProgress,
+                },
+            };
+        }),
+
+    setSpeed: (speed: number) =>
         set((s) => ({
             simulation: { ...s.simulation, speed },
+        })),
+
+    // Export actions
+    startExport: () =>
+        set((s) => ({
+            exportProgress: { ...s.exportProgress, exporting: true, progress: 0 },
+            simulation: { ...s.simulation, playing: false },
+        })),
+
+    updateExportProgress: (progress) =>
+        set((s) => ({
+            exportProgress: { ...s.exportProgress, progress },
+        })),
+
+    finishExport: () =>
+        set((s) => ({
+            exportProgress: { ...s.exportProgress, exporting: false },
         })),
 
     // UI layout actions

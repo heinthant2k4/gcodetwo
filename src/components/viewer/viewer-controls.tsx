@@ -11,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 
 export default function ViewerControls() {
     const simulation = useAppStore(selectSimulation);
+    const exportProgress = useAppStore((s) => s.exportProgress);
     const simulationData = useAppStore(selectSimulationData);
     const uiLayout = useAppStore(selectUILayout);
     const play = useAppStore((s) => s.play);
@@ -18,7 +19,7 @@ export default function ViewerControls() {
     const stop = useAppStore((s) => s.stop);
     const stepForward = useAppStore((s) => s.stepForward);
     const stepBackward = useAppStore((s) => s.stepBackward);
-    const setCurrentStep = useAppStore((s) => s.setCurrentStep);
+    const jumpToStep = useAppStore((s) => s.jumpToStep);
     const setViewMode = useAppStore((s) => s.setViewMode);
     const setSpeed = useAppStore((s) => s.setSpeed);
 
@@ -50,7 +51,7 @@ export default function ViewerControls() {
                             variant="ghost"
                             size="sm"
                             onClick={stepBackward}
-                            disabled={!hasData || simulation.currentStep <= 0}
+                            disabled={!hasData || simulation.currentStepIndex <= 0}
                             className="h-7 w-7 p-0 text-text-200 hover:text-text-100 hover:bg-bg-700"
                         >
                             <StepBackIcon />
@@ -82,7 +83,7 @@ export default function ViewerControls() {
                             variant="ghost"
                             size="sm"
                             onClick={stepForward}
-                            disabled={!hasData || simulation.currentStep >= maxStep}
+                            disabled={!hasData || simulation.currentStepIndex >= maxStep}
                             className="h-7 w-7 p-0 text-text-200 hover:text-text-100 hover:bg-bg-700"
                         >
                             <StepForwardIcon />
@@ -95,11 +96,11 @@ export default function ViewerControls() {
             {/* Scrub slider */}
             <div className="flex-1 mx-2">
                 <Slider
-                    value={[simulation.currentStep]}
+                    value={[simulation.currentStepIndex]}
                     min={0}
                     max={Math.max(maxStep, 1)}
                     step={1}
-                    onValueChange={([v]) => setCurrentStep(v)}
+                    onValueChange={([v]) => jumpToStep(v)}
                     disabled={!hasData}
                     className="w-full"
                 />
@@ -107,7 +108,7 @@ export default function ViewerControls() {
 
             {/* Step counter */}
             <span className="text-xs font-code text-text-300 min-w-[60px] text-right tabular-nums">
-                {simulation.currentStep}/{maxStep}
+                {simulation.currentStepIndex}/{maxStep}
             </span>
 
             {/* Separator */}
@@ -146,6 +147,29 @@ export default function ViewerControls() {
                     </Toggle>
                 </TooltipTrigger>
                 <TooltipContent side="top" className="text-xs">Toggle 2D/3D (Ctrl+Shift+V)</TooltipContent>
+            </Tooltip>
+
+            {/* Export button */}
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                            const canvas = document.querySelector("canvas");
+                            if (canvas) {
+                                void import("@/lib/export/gif-exporter").then((mod) => {
+                                    mod.exportSimulationAsGif(canvas);
+                                });
+                            }
+                        }}
+                        disabled={!hasData || exportProgress.exporting}
+                        className="h-7 px-2 text-xs font-ui text-text-300 hover:text-text-100 hover:bg-bg-700"
+                    >
+                        Export
+                    </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">Export Simulation (GIF)</TooltipContent>
             </Tooltip>
         </div>
     );
