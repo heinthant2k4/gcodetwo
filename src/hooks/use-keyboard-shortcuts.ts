@@ -16,6 +16,9 @@ export function useKeyboardShortcuts() {
     const stepForward = useAppStore((s) => s.stepForward);
     const stepBackward = useAppStore((s) => s.stepBackward);
     const setViewMode = useAppStore((s) => s.setViewMode);
+    const setCameraView = useAppStore((s) => s.setCameraView);
+    const requestCameraFit = useAppStore((s) => s.requestCameraFit);
+    const setZAxisUp = useAppStore((s) => s.setZAxisUp);
     const editorText = useAppStore((s) => s.editorText);
     const editorFilename = useAppStore((s) => s.editorFilename);
     const editorExtension = useAppStore((s) => s.editorExtension);
@@ -59,6 +62,30 @@ export function useKeyboardShortcuts() {
                     setViewMode(uiLayout.viewMode === "3d" ? "2d" : "3d");
                     break;
                 }
+                case "fit-view":
+                    requestCameraFit();
+                    break;
+                case "view-front":
+                    setCameraView("front");
+                    setViewMode("2d");
+                    break;
+                case "view-right":
+                    setCameraView("right");
+                    setViewMode("2d");
+                    break;
+                case "view-top":
+                    setCameraView("top");
+                    setViewMode("2d");
+                    break;
+                case "view-iso":
+                    setCameraView("iso");
+                    setViewMode("3d");
+                    break;
+                case "toggle-z-up": {
+                    const { uiLayout } = useAppStore.getState();
+                    setZAxisUp(!uiLayout.zAxisUp);
+                    break;
+                }
                 case "export-gcode": {
                     saveGCodeFile({
                         content: editorText,
@@ -97,6 +124,9 @@ export function useKeyboardShortcuts() {
             stepForward,
             stepBackward,
             setViewMode,
+            setCameraView,
+            requestCameraFit,
+            setZAxisUp,
             editorText,
             editorFilename,
             editorExtension,
@@ -113,8 +143,8 @@ export function useKeyboardShortcuts() {
                 target.tagName === "TEXTAREA" ||
                 target.tagName === "SELECT"
             ) {
-                // Allow Ctrl+S for save even in inputs
-                if (!(e.ctrlKey && e.key === "s")) {
+                // Allow command shortcuts while inputs are focused.
+                if (!(e.ctrlKey || e.metaKey || e.altKey || e.key === "Escape")) {
                     return;
                 }
             }

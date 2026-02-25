@@ -26,22 +26,35 @@ const MOTION_COLORS: Record<MotionType, string> = {
 const HIGHLIGHTED_COLOR = "#FFFFFF";
 const DIMMED_ALPHA = 0.3;
 
+function toScenePoint(
+    point: { x: number; y: number; z: number },
+    zAxisUp: boolean
+): THREE.Vector3 {
+    return new THREE.Vector3(
+        point.x,
+        zAxisUp ? point.z : -point.z,
+        -point.y
+    );
+}
+
 // Single toolpath line segment
 function ToolpathLine({
     segment,
     isHighlighted,
     isBeforeCurrent,
+    zAxisUp,
 }: {
     segment: ToolpathSegment;
     isHighlighted: boolean;
     isBeforeCurrent: boolean;
+    zAxisUp: boolean;
 }) {
     const color = isHighlighted ? HIGHLIGHTED_COLOR : MOTION_COLORS[segment.motionType];
     const opacity = isBeforeCurrent ? 1.0 : DIMMED_ALPHA;
 
     const line = useMemo(() => {
-        const start = new THREE.Vector3(segment.startPoint.x, segment.startPoint.z, -segment.startPoint.y);
-        const end = new THREE.Vector3(segment.endPoint.x, segment.endPoint.z, -segment.endPoint.y);
+        const start = toScenePoint(segment.startPoint, zAxisUp);
+        const end = toScenePoint(segment.endPoint, zAxisUp);
         const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
         const material = new THREE.LineBasicMaterial({
             color,
@@ -53,12 +66,9 @@ function ToolpathLine({
         color,
         opacity,
         isBeforeCurrent,
-        segment.startPoint.x,
-        segment.startPoint.y,
-        segment.startPoint.z,
-        segment.endPoint.x,
-        segment.endPoint.y,
-        segment.endPoint.z,
+        segment.startPoint,
+        segment.endPoint,
+        zAxisUp,
     ]);
 
     useEffect(
@@ -88,7 +98,7 @@ function ToolIndicator({ position }: { position: [number, number, number] }) {
 }
 
 // Axis indicator lines
-function AxisIndicator() {
+function AxisIndicator({ zAxisUp }: { zAxisUp: boolean }) {
     const xLine = useMemo(() => {
         const geometry = new THREE.BufferGeometry().setFromPoints([
             new THREE.Vector3(0, 0, 0),
@@ -106,10 +116,10 @@ function AxisIndicator() {
     const zLine = useMemo(() => {
         const geometry = new THREE.BufferGeometry().setFromPoints([
             new THREE.Vector3(0, 0, 0),
-            new THREE.Vector3(0, 0, -10),
+            new THREE.Vector3(0, zAxisUp ? 10 : -10, 0),
         ]);
         return new THREE.Line(geometry, new THREE.LineBasicMaterial({ color: "#3B82F6" }));
-    }, []);
+    }, [zAxisUp]);
 
     useEffect(
         () => () => {
@@ -138,7 +148,6 @@ function AxisIndicator() {
 function SceneGrid() {
     const grid = useMemo(() => {
         const helper = new THREE.GridHelper(200, 20, "#2A2F38", "#2A2F38");
-        helper.position.set(100, 0, -100);
         return helper;
     }, []);
 
@@ -158,12 +167,22 @@ function SceneGrid() {
 }
 
 // Camera auto-fit on data change
-function CameraController({ boundingBox }: { boundingBox: { min: { x: number; y: number; z: number }; max: { x: number; y: number; z: number } } }) {
+function CameraController({
+    boundingBox,
+    fitRequestId,
+    cameraView,
+    zAxisUp,
+}: {
+    boundingBox: { min: { x: number; y: number; z: number }; max: { x: number; y: number; z: number } };
+    fitRequestId: number;
+    cameraView: "iso" | "top" | "front" | "right";
+    zAxisUp: boolean;
+}) {
     const { camera } = useThree();
 
     useEffect(() => {
         const cx = (boundingBox.min.x + boundingBox.max.x) / 2;
-        const cy = (boundingBox.min.z + boundingBox.max.z) / 2;
+        const cy = (zAxisUp ? 1 : -1) * (boundingBox.min.z + boundingBox.max.z) / 2;
         const cz = -(boundingBox.min.y + boundingBox.max.y) / 2;
 
         const sizeX = boundingBox.max.x - boundingBox.min.x;
@@ -171,10 +190,32 @@ function CameraController({ boundingBox }: { boundingBox: { min: { x: number; y:
         const sizeZ = boundingBox.max.z - boundingBox.min.z;
         const maxSize = Math.max(sizeX, sizeY, sizeZ, 50);
 
-        camera.position.set(cx + maxSize * 0.8, cy + maxSize * 0.8, cz + maxSize * 0.8);
+        const distance = maxSize * 1.25;
+        const viewVectors: Record<"iso" | "top" | "front" | "right", THREE.Vector3> = {
+            iso: new THREE.Vector3(1, 1, 1),
+            top: new THREE.Vector3(0, 1, 0),
+            front: new THREE.Vector3(0, 0, 1),
+            right: new THREE.Vector3(1, 0, 0),
+        };
+        const upVectors: Record<"iso" | "top" | "front" | "right", THREE.Vector3> = {
+            iso: new THREE.Vector3(0, 1, 0),
+            top: new THREE.Vector3(0, 0, -1),
+            front: new THREE.Vector3(0, 1, 0),
+            right: new THREE.Vector3(0, 1, 0),
+        };
+
+        const direction = viewVectors[cameraView].clone().normalize();
+        const up = upVectors[cameraView];
+
+        camera.position.set(
+            cx + direction.x * distance,
+            cy + direction.y * distance,
+            cz + direction.z * distance
+        );
+        camera.up.copy(up);
         camera.lookAt(cx, cy, cz);
         camera.updateProjectionMatrix();
-    }, [boundingBox, camera]);
+    }, [boundingBox, camera, fitRequestId, cameraView, zAxisUp]);
 
     return null;
 }
@@ -250,6 +291,12 @@ function ToolpathScene() {
     const currentStepIndex = useAppStore((s) => s.simulation.currentStepIndex);
     const hoveredLine = useAppStore(selectHoveredLine);
     const viewMode = useAppStore((s) => s.uiLayout.viewMode);
+    const cameraView = useAppStore((s) => s.uiLayout.cameraView);
+    const showGrid = useAppStore((s) => s.uiLayout.showGrid);
+    const showRapids = useAppStore((s) => s.uiLayout.showRapids);
+    const hideFuturePath = useAppStore((s) => s.uiLayout.hideFuturePath);
+    const zAxisUp = useAppStore((s) => s.uiLayout.zAxisUp);
+    const cameraFitRequestId = useAppStore((s) => s.cameraFitRequestId);
 
     // Get current tool position
     const toolPosition = useMemo<[number, number, number]>(() => {
@@ -258,31 +305,46 @@ function ToolpathScene() {
         const idx = Math.min(currentStepIndex, segments.length - 1);
         const seg = segments[idx];
         const pos = currentStepIndex >= segments.length ? seg.endPoint : seg.startPoint;
-        return [pos.x, pos.z, -pos.y];
-    }, [segments, currentStepIndex]);
+        const scene = toScenePoint(pos, zAxisUp);
+        return [scene.x, scene.y, scene.z];
+    }, [segments, currentStepIndex, zAxisUp]);
+
+    const visibleSegments = useMemo(() => {
+        return segments.filter((segment) => {
+            if (!showRapids && segment.motionType === "rapid") return false;
+            if (hideFuturePath && segment.index >= currentStepIndex) return false;
+            return true;
+        });
+    }, [segments, showRapids, hideFuturePath, currentStepIndex]);
 
     return (
         <>
             <ViewModeController viewMode={viewMode} />
-            <CameraController boundingBox={boundingBox} />
+            <CameraController
+                boundingBox={boundingBox}
+                fitRequestId={cameraFitRequestId}
+                cameraView={cameraView}
+                zAxisUp={zAxisUp}
+            />
             <PlaybackController />
 
             {/* Lighting — minimal, functional only */}
             <ambientLight intensity={0.8} />
 
             {/* Grid */}
-            <SceneGrid />
+            {showGrid && <SceneGrid />}
 
             {/* Axis indicator */}
-            <AxisIndicator />
+            <AxisIndicator zAxisUp={zAxisUp} />
 
             {/* Toolpath lines */}
-            {segments.map((segment) => (
+            {visibleSegments.map((segment) => (
                 <ToolpathLine
                     key={segment.index}
                     segment={segment}
                     isHighlighted={hoveredLine !== null && segment.sourceLine === hoveredLine}
                     isBeforeCurrent={segment.index < currentStepIndex}
+                    zAxisUp={zAxisUp}
                 />
             ))}
 

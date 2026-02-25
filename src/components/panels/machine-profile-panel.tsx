@@ -110,6 +110,8 @@ function AxisField({
 
 export default function MachineProfilePanel() {
     const profile = useAppStore(selectMachineProfile);
+    const zAxisUp = useAppStore((s) => s.uiLayout.zAxisUp);
+    const setZAxisUp = useAppStore((s) => s.setZAxisUp);
     const updateProfile = useAppStore((s) => s.updateMachineProfile);
     const setProfile = useAppStore((s) => s.setMachineProfile);
     const feedStep = profile.units === "mm" ? 10 : 0.1;
@@ -166,6 +168,25 @@ export default function MachineProfilePanel() {
                                 </SelectItem>
                             </SelectContent>
                         </Select>
+                    </div>
+
+                    {/* Coordinate orientation */}
+                    <div className="rounded-sm border border-border-500 bg-bg-800 p-2">
+                        <div className="mb-1.5 flex items-center justify-between">
+                            <Label className="text-xs text-text-300">Coordinate Orientation</Label>
+                            <span className="text-[11px] font-code uppercase tracking-wide text-text-300">
+                                View
+                            </span>
+                        </div>
+                        <label className="flex items-center gap-2 text-xs font-code text-text-200">
+                            <input
+                                type="checkbox"
+                                checked={zAxisUp}
+                                onChange={(e) => setZAxisUp(e.target.checked)}
+                                className="h-3.5 w-3.5 rounded-sm border border-border-500 bg-bg-900 accent-semantic-motion"
+                            />
+                            Z-Axis Vertical Up
+                        </label>
                     </div>
 
                     {/* Axis limits */}

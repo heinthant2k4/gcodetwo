@@ -20,7 +20,12 @@ interface UILayout {
     diagnosticsCollapsed: boolean;
     machineProfileCollapsed: boolean;
     viewMode: "3d" | "2d";
+    cameraView: "iso" | "top" | "front" | "right";
     autoScrollToActiveLine: boolean;
+    zAxisUp: boolean;
+    showGrid: boolean;
+    showRapids: boolean;
+    hideFuturePath: boolean;
 }
 
 // Simulation playback state
@@ -61,6 +66,7 @@ interface AppState {
 
     // UI Layout
     uiLayout: UILayout;
+    cameraFitRequestId: number;
 
     // Actions — editor
     setEditorText: (
@@ -97,9 +103,13 @@ interface AppState {
     finishExport: () => void;
 
     // Actions — UI layout
-    togglePanel: (panel: keyof Omit<UILayout, "viewMode">) => void;
+    togglePanel: (panel: keyof Pick<UILayout, "editorCollapsed" | "viewerCollapsed" | "diagnosticsCollapsed" | "machineProfileCollapsed">) => void;
     setViewMode: (mode: "3d" | "2d") => void;
+    setCameraView: (view: "iso" | "top" | "front" | "right") => void;
     setAutoScroll: (enabled: boolean) => void;
+    setZAxisUp: (enabled: boolean) => void;
+    setViewerOption: (option: "showGrid" | "showRapids" | "hideFuturePath", enabled: boolean) => void;
+    requestCameraFit: () => void;
 }
 
 // Recompute derived state from editor text + machine profile
@@ -205,8 +215,14 @@ export const useAppStore = create<AppState>((set, get) => ({
         diagnosticsCollapsed: false,
         machineProfileCollapsed: false,
         viewMode: "3d",
+        cameraView: "iso",
         autoScrollToActiveLine: false,
+        zAxisUp: true,
+        showGrid: true,
+        showRapids: true,
+        hideFuturePath: false,
     },
+    cameraFitRequestId: 0,
 
     exportProgress: {
         exporting: false,
@@ -390,9 +406,29 @@ export const useAppStore = create<AppState>((set, get) => ({
             uiLayout: { ...s.uiLayout, viewMode: mode },
         })),
 
+    setCameraView: (view) =>
+        set((s) => ({
+            uiLayout: { ...s.uiLayout, cameraView: view },
+        })),
+
     setAutoScroll: (enabled: boolean) =>
         set((s) => ({
             uiLayout: { ...s.uiLayout, autoScrollToActiveLine: enabled },
+        })),
+
+    setZAxisUp: (enabled: boolean) =>
+        set((s) => ({
+            uiLayout: { ...s.uiLayout, zAxisUp: enabled },
+        })),
+
+    setViewerOption: (option, enabled) =>
+        set((s) => ({
+            uiLayout: { ...s.uiLayout, [option]: enabled },
+        })),
+
+    requestCameraFit: () =>
+        set((s) => ({
+            cameraFitRequestId: s.cameraFitRequestId + 1,
         })),
 }));
 
