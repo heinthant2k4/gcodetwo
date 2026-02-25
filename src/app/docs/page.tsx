@@ -4,7 +4,7 @@ import Link from "next/link";
 
 export default function DocsPage() {
     return (
-        <div className="h-screen bg-bg-900 overflow-y-auto selection:bg-semantic-motion selection:text-white">
+        <div className="h-full bg-bg-900 overflow-y-auto selection:bg-semantic-motion selection:text-white">
             <div className="text-text-200 font-ui p-8 max-w-4xl mx-auto leading-relaxed">
                 <nav className="mb-12 border-b border-border-500 pb-4">
                     <Link href="/" className="text-semantic-motion hover:text-text-100 transition-colors text-sm uppercase tracking-widest font-code">

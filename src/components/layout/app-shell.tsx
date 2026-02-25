@@ -309,7 +309,7 @@ export default function AppShell() {
 
     return (
         <div
-            className="flex flex-col h-screen w-screen bg-bg-900 overflow-hidden"
+            className="flex flex-col h-full w-full bg-bg-900 overflow-hidden"
             onDragOver={handleDragOver}
             onDrop={handleDrop}
         >

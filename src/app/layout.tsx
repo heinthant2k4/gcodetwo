@@ -54,10 +54,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} ${jetbrainsMono.variable} font-ui antialiased`}>
-        <TooltipProvider delayDuration={300}>
-          {children}
-        </TooltipProvider>
+      <body className={`${inter.variable} ${jetbrainsMono.variable} font-ui antialiased h-screen overflow-hidden`}>
+        <div className="h-full flex flex-col">
+          <TooltipProvider delayDuration={300}>
+            {children}
+          </TooltipProvider>
+        </div>
       </body>
     </html>
   );
