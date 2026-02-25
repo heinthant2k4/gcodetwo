@@ -20,7 +20,8 @@ interface UILayout {
     diagnosticsCollapsed: boolean;
     machineProfileCollapsed: boolean;
     viewMode: "3d" | "2d";
-    cameraView: "iso" | "top" | "front" | "right";
+    cameraFaceId: string;
+    cameraDirection: { x: number; y: number; z: number };
     autoScrollToActiveLine: boolean;
     zAxisUp: boolean;
     showGrid: boolean;
@@ -105,7 +106,7 @@ interface AppState {
     // Actions — UI layout
     togglePanel: (panel: keyof Pick<UILayout, "editorCollapsed" | "viewerCollapsed" | "diagnosticsCollapsed" | "machineProfileCollapsed">) => void;
     setViewMode: (mode: "3d" | "2d") => void;
-    setCameraView: (view: "iso" | "top" | "front" | "right") => void;
+    setCameraOrientation: (faceId: string, direction: { x: number; y: number; z: number }) => void;
     setAutoScroll: (enabled: boolean) => void;
     setZAxisUp: (enabled: boolean) => void;
     setViewerOption: (option: "showGrid" | "showRapids" | "hideFuturePath", enabled: boolean) => void;
@@ -215,7 +216,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         diagnosticsCollapsed: false,
         machineProfileCollapsed: false,
         viewMode: "3d",
-        cameraView: "iso",
+        cameraFaceId: "tri_1_1_1",
+        cameraDirection: { x: 1, y: 1, z: 1 },
         autoScrollToActiveLine: false,
         zAxisUp: true,
         showGrid: true,
@@ -406,9 +408,9 @@ export const useAppStore = create<AppState>((set, get) => ({
             uiLayout: { ...s.uiLayout, viewMode: mode },
         })),
 
-    setCameraView: (view) =>
+    setCameraOrientation: (faceId, direction) =>
         set((s) => ({
-            uiLayout: { ...s.uiLayout, cameraView: view },
+            uiLayout: { ...s.uiLayout, cameraFaceId: faceId, cameraDirection: direction },
         })),
 
     setAutoScroll: (enabled: boolean) =>

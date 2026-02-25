@@ -14,6 +14,7 @@ import {
 } from "@/store";
 import { ToolpathSegment, MotionType } from "@/lib/types/simulation";
 import ExportOverlay from "./export-overlay";
+import OrientationPolyhedron from "./orientation-polyhedron";
 
 // Color mapping for motion types — matches design tokens
 const MOTION_COLORS: Record<MotionType, string> = {
@@ -170,12 +171,12 @@ function SceneGrid() {
 function CameraController({
     boundingBox,
     fitRequestId,
-    cameraView,
+    cameraDirection,
     zAxisUp,
 }: {
     boundingBox: { min: { x: number; y: number; z: number }; max: { x: number; y: number; z: number } };
     fitRequestId: number;
-    cameraView: "iso" | "top" | "front" | "right";
+    cameraDirection: { x: number; y: number; z: number };
     zAxisUp: boolean;
 }) {
     const { camera } = useThree();
@@ -191,21 +192,15 @@ function CameraController({
         const maxSize = Math.max(sizeX, sizeY, sizeZ, 50);
 
         const distance = maxSize * 1.25;
-        const viewVectors: Record<"iso" | "top" | "front" | "right", THREE.Vector3> = {
-            iso: new THREE.Vector3(1, 1, 1),
-            top: new THREE.Vector3(0, 1, 0),
-            front: new THREE.Vector3(0, 0, 1),
-            right: new THREE.Vector3(1, 0, 0),
-        };
-        const upVectors: Record<"iso" | "top" | "front" | "right", THREE.Vector3> = {
-            iso: new THREE.Vector3(0, 1, 0),
-            top: new THREE.Vector3(0, 0, -1),
-            front: new THREE.Vector3(0, 1, 0),
-            right: new THREE.Vector3(0, 1, 0),
-        };
-
-        const direction = viewVectors[cameraView].clone().normalize();
-        const up = upVectors[cameraView];
+        const direction = new THREE.Vector3(
+            cameraDirection.x,
+            cameraDirection.y,
+            cameraDirection.z
+        ).normalize();
+        let up = zAxisUp ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(0, 0, -1);
+        if (Math.abs(direction.dot(up)) > 0.95) {
+            up = new THREE.Vector3(0, 1, 0);
+        }
 
         camera.position.set(
             cx + direction.x * distance,
@@ -215,7 +210,7 @@ function CameraController({
         camera.up.copy(up);
         camera.lookAt(cx, cy, cz);
         camera.updateProjectionMatrix();
-    }, [boundingBox, camera, fitRequestId, cameraView, zAxisUp]);
+    }, [boundingBox, camera, fitRequestId, cameraDirection, zAxisUp]);
 
     return null;
 }
@@ -291,7 +286,7 @@ function ToolpathScene() {
     const currentStepIndex = useAppStore((s) => s.simulation.currentStepIndex);
     const hoveredLine = useAppStore(selectHoveredLine);
     const viewMode = useAppStore((s) => s.uiLayout.viewMode);
-    const cameraView = useAppStore((s) => s.uiLayout.cameraView);
+    const cameraDirection = useAppStore((s) => s.uiLayout.cameraDirection);
     const showGrid = useAppStore((s) => s.uiLayout.showGrid);
     const showRapids = useAppStore((s) => s.uiLayout.showRapids);
     const hideFuturePath = useAppStore((s) => s.uiLayout.hideFuturePath);
@@ -323,7 +318,7 @@ function ToolpathScene() {
             <CameraController
                 boundingBox={boundingBox}
                 fitRequestId={cameraFitRequestId}
-                cameraView={cameraView}
+                cameraDirection={cameraDirection}
                 zAxisUp={zAxisUp}
             />
             <PlaybackController />
@@ -370,6 +365,7 @@ export default function ToolpathViewer() {
             >
                 <ToolpathScene />
             </Canvas>
+            <OrientationPolyhedron />
             <ExportOverlay />
         </div>
     );

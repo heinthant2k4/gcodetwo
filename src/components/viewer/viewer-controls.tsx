@@ -18,7 +18,6 @@ export default function ViewerControls() {
     const maxStep = useAppStore((s) => s.simulationData.segments.length);
     const segments = useAppStore((s) => s.simulationData.segments);
     const viewMode = useAppStore((s) => s.uiLayout.viewMode);
-    const cameraView = useAppStore((s) => s.uiLayout.cameraView);
     const autoScrollToActiveLine = useAppStore((s) => s.uiLayout.autoScrollToActiveLine);
     const showGrid = useAppStore((s) => s.uiLayout.showGrid);
     const showRapids = useAppStore((s) => s.uiLayout.showRapids);
@@ -31,7 +30,6 @@ export default function ViewerControls() {
     const stepBackward = useAppStore((s) => s.stepBackward);
     const jumpToStep = useAppStore((s) => s.jumpToStep);
     const setViewMode = useAppStore((s) => s.setViewMode);
-    const setCameraView = useAppStore((s) => s.setCameraView);
     const setSpeed = useAppStore((s) => s.setSpeed);
     const setViewerOption = useAppStore((s) => s.setViewerOption);
     const requestCameraFit = useAppStore((s) => s.requestCameraFit);
@@ -216,53 +214,6 @@ export default function ViewerControls() {
                 </TooltipTrigger>
                 <TooltipContent side="top" className="text-xs">Fit Toolpath to View</TooltipContent>
             </Tooltip>
-
-            <div className="flex items-center gap-1 rounded-sm border border-border-500 bg-bg-900 p-1">
-                <Button
-                    variant={cameraView === "iso" ? "secondary" : "ghost"}
-                    size="sm"
-                    onClick={() => {
-                        setCameraView("iso");
-                        setViewMode("3d");
-                    }}
-                    className="h-6 px-2 text-[11px] font-code"
-                >
-                    ISO
-                </Button>
-                <Button
-                    variant={cameraView === "top" ? "secondary" : "ghost"}
-                    size="sm"
-                    onClick={() => {
-                        setCameraView("top");
-                        setViewMode("2d");
-                    }}
-                    className="h-6 px-2 text-[11px] font-code"
-                >
-                    TOP
-                </Button>
-                <Button
-                    variant={cameraView === "front" ? "secondary" : "ghost"}
-                    size="sm"
-                    onClick={() => {
-                        setCameraView("front");
-                        setViewMode("2d");
-                    }}
-                    className="h-6 px-2 text-[11px] font-code"
-                >
-                    FRONT
-                </Button>
-                <Button
-                    variant={cameraView === "right" ? "secondary" : "ghost"}
-                    size="sm"
-                    onClick={() => {
-                        setCameraView("right");
-                        setViewMode("2d");
-                    }}
-                    className="h-6 px-2 text-[11px] font-code"
-                >
-                    RIGHT
-                </Button>
-            </div>
 
             {/* 2D/3D toggle */}
             <Tooltip>

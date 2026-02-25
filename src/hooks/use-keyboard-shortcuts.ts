@@ -8,6 +8,7 @@ import { useEffect, useCallback } from "react";
 import { useAppStore } from "@/store";
 import { SHORTCUTS } from "@/lib/keyboard/shortcuts";
 import { loadGCodeFile, saveGCodeFile, getBasename } from "@/lib/io/file-handler";
+import { CAMERA_FACE_PRESETS } from "@/lib/view/camera-faces";
 
 export function useKeyboardShortcuts() {
     const play = useAppStore((s) => s.play);
@@ -16,7 +17,7 @@ export function useKeyboardShortcuts() {
     const stepForward = useAppStore((s) => s.stepForward);
     const stepBackward = useAppStore((s) => s.stepBackward);
     const setViewMode = useAppStore((s) => s.setViewMode);
-    const setCameraView = useAppStore((s) => s.setCameraView);
+    const setCameraOrientation = useAppStore((s) => s.setCameraOrientation);
     const requestCameraFit = useAppStore((s) => s.requestCameraFit);
     const setZAxisUp = useAppStore((s) => s.setZAxisUp);
     const editorText = useAppStore((s) => s.editorText);
@@ -66,19 +67,19 @@ export function useKeyboardShortcuts() {
                     requestCameraFit();
                     break;
                 case "view-front":
-                    setCameraView("front");
+                    setCameraOrientation(CAMERA_FACE_PRESETS.front.id, CAMERA_FACE_PRESETS.front.direction);
                     setViewMode("2d");
                     break;
                 case "view-right":
-                    setCameraView("right");
+                    setCameraOrientation(CAMERA_FACE_PRESETS.right.id, CAMERA_FACE_PRESETS.right.direction);
                     setViewMode("2d");
                     break;
                 case "view-top":
-                    setCameraView("top");
+                    setCameraOrientation(CAMERA_FACE_PRESETS.top.id, CAMERA_FACE_PRESETS.top.direction);
                     setViewMode("2d");
                     break;
                 case "view-iso":
-                    setCameraView("iso");
+                    setCameraOrientation(CAMERA_FACE_PRESETS.iso.id, CAMERA_FACE_PRESETS.iso.direction);
                     setViewMode("3d");
                     break;
                 case "toggle-z-up": {
@@ -124,7 +125,7 @@ export function useKeyboardShortcuts() {
             stepForward,
             stepBackward,
             setViewMode,
-            setCameraView,
+            setCameraOrientation,
             requestCameraFit,
             setZAxisUp,
             editorText,
