@@ -11,6 +11,7 @@
 
 import { useCallback, useRef, useState, useEffect } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useAppStore, selectUILayout, selectSimulationData, selectIsValid } from "@/store";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import DiagnosticsPanel from "@/components/panels/diagnostics-panel";
@@ -101,6 +102,36 @@ function StatusBar() {
                 <span>{machineProfile.units.toUpperCase()}</span>
             </div>
         </div>
+    );
+}
+
+// Global Application Footer
+function Footer() {
+    return (
+        <footer className="h-6 border-t border-border-500 bg-bg-900 flex items-center justify-between px-3 shrink-0 text-[10px] text-text-300 uppercase tracking-widest font-ui">
+            <div className="flex items-center gap-1 leading-none">
+                <span>Designed & Built by</span>
+                <a
+                    href="https://heinthant2k4.vercel.app"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-semantic-motion hover:text-text-100 transition-colors"
+                >
+                    Heinthant Zaw
+                </a>
+            </div>
+            <div className="flex items-center gap-4">
+                <Link
+                    href="/docs"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-text-300 hover:text-text-100 transition-colors flex items-center gap-1"
+                >
+                    <span>Manual</span>
+                    <span className="opacity-50 select-none">[v2.0.4]</span>
+                </Link>
+            </div>
+        </footer>
     );
 }
 
@@ -283,7 +314,7 @@ export default function AppShell() {
             onDrop={handleDrop}
         >
             {/* Top bar */}
-            <div className="flex items-center justify-between px-3 py-1 border-b border-border-500 bg-bg-800">
+            <header className="flex items-center justify-between px-3 py-1 border-b border-border-500 bg-bg-800" aria-label="Application Header">
                 <div className="flex items-center gap-3">
                     <span className="text-sm font-ui font-semibold text-text-100 tracking-tight">
                         WebGCode 2
@@ -291,14 +322,30 @@ export default function AppShell() {
                     <div className="w-px h-4 bg-border-500" />
                     <FileControls />
                 </div>
-                <div className="flex items-center gap-1 text-xs text-text-300 font-code">
-                    <span>Local</span>
-                    <span className="text-semantic-safe">●</span>
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1 text-xs text-text-300 font-code mr-2" aria-label="System Status">
+                        <span>Local</span>
+                        <span className="text-semantic-safe">●</span>
+                    </div>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                asChild
+                                className="h-6 px-3 text-xs text-text-100 border-border-500 bg-bg-700 hover:bg-bg-600 hover:border-semantic-motion transition-all font-ui font-semibold"
+                                aria-label="View Technical Manual"
+                            >
+                                <Link href="/docs" target="_blank">Docs</Link>
+                            </Button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="text-xs font-ui">Technical Manual</TooltipContent>
+                    </Tooltip>
                 </div>
-            </div>
+            </header>
 
             {/* Main content area */}
-            <div ref={containerRef} className="flex-1 flex flex-col overflow-hidden">
+            <main ref={containerRef} className="flex-1 flex flex-col overflow-hidden" aria-label="Main Editor and Editor Workspace">
                 {/* Top row: Editor + Viewer */}
                 <div className="flex overflow-hidden" style={{ height: `${vSplit * 100}%` }}>
                     {/* Editor panel */}
@@ -422,10 +469,10 @@ export default function AppShell() {
                         )}
                     </div>
                 </div>
-            </div>
+            </main>
 
-            {/* Status bar */}
             <StatusBar />
+            <Footer />
         </div>
     );
 }

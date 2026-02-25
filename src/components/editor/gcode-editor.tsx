@@ -86,6 +86,69 @@ export default function GCodeEditor() {
         [setEditorText]
     );
 
+    // Track simulation state for instrumentation
+    const simulation = useAppStore((s) => s.simulation);
+    const simulationData = useAppStore((s) => s.simulationData);
+    const autoScroll = useAppStore((s) => s.uiLayout.autoScrollToActiveLine);
+    const decorationIdsRef = useRef<string[]>([]);
+
+    // Update instrumentation (active line + trail)
+    useEffect(() => {
+        const editor = editorRef.current;
+        const monaco = monacoRef.current;
+        if (!editor || !monaco) return;
+
+        const { currentStepIndex } = simulation;
+        const { steps } = simulationData;
+
+        if (steps.length === 0 || currentStepIndex >= steps.length) {
+            decorationIdsRef.current = editor.deltaDecorations(decorationIdsRef.current, []);
+            return;
+        }
+
+        const currentStep = steps[currentStepIndex];
+        const currentLine = currentStep.sourceLine;
+
+        // Collect trail decorations
+        const newDecorations: MonacoEditor.IModelDeltaDecoration[] = [];
+
+        // Active line
+        newDecorations.push({
+            range: new monaco.Range(currentLine, 1, currentLine, 1),
+            options: {
+                isWholeLine: true,
+                className: "active-line-decoration",
+                zIndex: 10,
+            },
+        });
+
+        // Fade trail (history of last 3 lines)
+        const trailLines = new Set<number>();
+        for (let i = 1; i <= 3; i++) {
+            const trailIdx = currentStepIndex - i;
+            if (trailIdx >= 0) {
+                const trailLine = steps[trailIdx].sourceLine;
+                if (trailLine !== currentLine && !trailLines.has(trailLine)) {
+                    trailLines.add(trailLine);
+                    newDecorations.push({
+                        range: new monaco.Range(trailLine, 1, trailLine, 1),
+                        options: {
+                            isWholeLine: true,
+                            className: `trail-${trailLines.size}`,
+                        },
+                    });
+                }
+            }
+        }
+
+        decorationIdsRef.current = editor.deltaDecorations(decorationIdsRef.current, newDecorations);
+
+        // Auto-scroll logic
+        if (autoScroll && simulation.playing) {
+            editor.revealLineInCenterIfOutsideViewport(currentLine);
+        }
+    }, [simulation.currentStepIndex, simulation.playing, simulationData.steps, autoScroll]);
+
     // Update error markers when diagnostics change
     useEffect(() => {
         const editor = editorRef.current;

@@ -149,6 +149,23 @@ export default function ViewerControls() {
                 <TooltipContent side="top" className="text-xs">Toggle 2D/3D (Ctrl+Shift+V)</TooltipContent>
             </Tooltip>
 
+            {/* Auto-scroll toggle */}
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <Toggle
+                        pressed={uiLayout.autoScrollToActiveLine}
+                        onPressedChange={(pressed) => {
+                            useAppStore.getState().setAutoScroll(pressed);
+                        }}
+                        size="sm"
+                        className="h-7 px-2 text-xs font-code text-text-300 data-[state=on]:text-text-100 data-[state=on]:bg-bg-700"
+                    >
+                        Scroll
+                    </Toggle>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="text-xs">Auto-scroll Editor</TooltipContent>
+            </Tooltip>
+
             {/* Export button */}
             <Tooltip>
                 <TooltipTrigger asChild>

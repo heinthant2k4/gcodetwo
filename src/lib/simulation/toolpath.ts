@@ -139,6 +139,7 @@ export function generateToolpath(instructions: GCodeInstruction[]): SimulationDa
     for (const seg of segments) {
         steps.push({
             segmentIndex: seg.index,
+            sourceLine: seg.sourceLine,
             cumulativeTime,
             cumulativeDistance,
             position: seg.startPoint,
@@ -161,6 +162,7 @@ export function generateToolpath(instructions: GCodeInstruction[]): SimulationDa
         const lastSeg = segments[segments.length - 1];
         steps.push({
             segmentIndex: lastSeg.index,
+            sourceLine: lastSeg.sourceLine,
             cumulativeTime,
             cumulativeDistance,
             position: lastSeg.endPoint,

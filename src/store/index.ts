@@ -19,6 +19,7 @@ interface UILayout {
     diagnosticsCollapsed: boolean;
     machineProfileCollapsed: boolean;
     viewMode: "3d" | "2d";
+    autoScrollToActiveLine: boolean;
 }
 
 // Simulation playback state
@@ -85,6 +86,7 @@ interface AppState {
     // Actions — UI layout
     togglePanel: (panel: keyof Omit<UILayout, "viewMode">) => void;
     setViewMode: (mode: "3d" | "2d") => void;
+    setAutoScroll: (enabled: boolean) => void;
 }
 
 // Recompute derived state from editor text + machine profile
@@ -184,6 +186,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         diagnosticsCollapsed: false,
         machineProfileCollapsed: false,
         viewMode: "3d",
+        autoScrollToActiveLine: false,
     },
 
     exportProgress: {
@@ -333,9 +336,14 @@ export const useAppStore = create<AppState>((set, get) => ({
             uiLayout: { ...s.uiLayout, [panel]: !s.uiLayout[panel] },
         })),
 
-    setViewMode: (mode) =>
+    setViewMode: (mode: "3d" | "2d") =>
         set((s) => ({
             uiLayout: { ...s.uiLayout, viewMode: mode },
+        })),
+
+    setAutoScroll: (enabled: boolean) =>
+        set((s) => ({
+            uiLayout: { ...s.uiLayout, autoScrollToActiveLine: enabled },
         })),
 }));
 

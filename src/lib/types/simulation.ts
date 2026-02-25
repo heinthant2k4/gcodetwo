@@ -21,6 +21,7 @@ export interface ToolpathSegment {
 
 export interface SimulationStep {
     segmentIndex: number;
+    sourceLine: number; // Mapping back to editor line
     cumulativeTime: number; // seconds from start
     cumulativeDistance: number;
     position: Point3D;

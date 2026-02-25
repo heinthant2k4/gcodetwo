@@ -16,22 +16,26 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "WebGCode 2 | Professional G-code Editor & 3D Simulator",
-  description: "A high-performance, deterministic, and local-only G-code editor, validator, and 3D simulation tool for CNC machinists and engineers. Fast, secure, and reliable.",
-  keywords: ["G-code", "CNC", "Simulator", "Editor", "Machining", "Toolpath", "Engineering", "WebGCode", "Manufacturing"],
-  authors: [{ name: "Antigravity Team" }],
+  metadataBase: new URL("https://webgcode.vercel.app"),
+  title: "WebGCode 2 | G-code Viewer & CNC Toolpath Simulator",
+  description: "A professional, deterministic G-code viewer and CNC toolpath simulator. Validates code against machine constraints strictly in the browser.",
+  keywords: ["G-code Viewer", "CNC Simulator", "Toolpath Visualization", "CNC Machining", "G-code Editor"],
+  authors: [{ name: "Heinthant Zaw" }],
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
-    title: "WebGCode 2 | G-code Editor & Simulator",
-    description: "The ultimate tool for CNC G-code validation and simulation.",
-    url: "https://webgcode.app", // Placeholder for canonical
+    title: "WebGCode 2 | G-code Viewer & Simulator",
+    description: "Deterministic G-code validation and toolpath visualization for CNC machining.",
+    url: "/",
     siteName: "WebGCode 2",
     locale: "en_US",
     type: "website",
   },
   twitter: {
-    card: "summary_large_image",
-    title: "WebGCode 2 | G-code Editor & Simulator",
-    description: "Local-only G-code validation and 3D toolpath simulation.",
+    card: "summary",
+    title: "WebGCode 2 | G-code Viewer & Simulator",
+    description: "Local-only G-code validation and toolpath visualization.",
   },
   robots: {
     index: true,

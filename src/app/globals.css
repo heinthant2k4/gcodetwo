@@ -93,3 +93,23 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-text-300);
 }
+
+/* Monaco Editor Instrumentation */
+.monaco-editor .active-line-decoration {
+  background-color: hsla(217, 91%, 60%, 0.15);
+  /* motion-blue with opacity */
+  border-left: 2px solid #3b82f6;
+  width: 100% !important;
+}
+
+.monaco-editor .trail-1 {
+  background-color: hsla(217, 91%, 60%, 0.10);
+}
+
+.monaco-editor .trail-2 {
+  background-color: hsla(217, 91%, 60%, 0.07);
+}
+
+.monaco-editor .trail-3 {
+  background-color: hsla(217, 91%, 60%, 0.04);
+}
